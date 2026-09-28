@@ -3,18 +3,24 @@ const router = express.Router();
 
 const {
   getExpenses,
+  getExpenseSummary,
   createExpense,
   updateExpense,
-  deleteExpense
+  deleteExpense,
 } = require("../controllers/expenseController");
 
 const {
-  protect
+  optionalAuth,
+  protect,
 } = require("../middleware/authMiddleware");
 
-router.get("/", protect, getExpenses);
-router.post("/", protect, createExpense);
-router.put("/:id", protect, updateExpense);
-router.delete("/:id", protect, deleteExpense);
+// Financial summary endpoint (placed before :id route)
+router.get("/summary", optionalAuth, getExpenseSummary);
+
+// CRUD Endpoints
+router.get("/", optionalAuth, getExpenses);
+router.post("/", optionalAuth, createExpense);
+router.put("/:id", optionalAuth, updateExpense);
+router.delete("/:id", optionalAuth, deleteExpense);
 
 module.exports = router;

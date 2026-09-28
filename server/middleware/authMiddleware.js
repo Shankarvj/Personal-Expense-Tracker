@@ -1,9 +1,10 @@
 const jwt = require("jsonwebtoken");
 
+const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey";
+
+// Strict Guard Middleware - Rejects if token missing or invalid
 const protect = (req, res, next) => {
   let token;
-
-  console.log("Authorization Header:", req.headers.authorization);
 
   if (
     req.headers.authorization &&
@@ -11,30 +12,40 @@ const protect = (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
-
-      console.log("Token:", token);
-
-      const decoded = jwt.verify(token, "mysecretkey");
-
-      console.log("Decoded:", decoded);
-
+      const decoded = jwt.verify(token, JWT_SECRET);
       req.user = decoded;
-
-      next();
+      return next();
     } catch (error) {
-      console.log("JWT Error:", error.message);
-
       return res.status(401).json({
-        message: "Not Authorized"
+        success: false,
+        message: "Not Authorized: Invalid or expired token",
       });
     }
   }
 
   if (!token) {
     return res.status(401).json({
-      message: "No Token Found"
+      success: false,
+      message: "Not Authorized: No token provided in Authorization header",
     });
   }
 };
 
-module.exports = { protect };
+// Flexible / Permissive Middleware - Decodes token if present, but permits unauthenticated access
+const optionalAuth = (req, res, next) => {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
+      const token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+    } catch (error) {
+      // Ignored for optional auth
+    }
+  }
+  next();
+};
+
+module.exports = { protect, optionalAuth };

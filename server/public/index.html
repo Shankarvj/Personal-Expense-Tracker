@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker | Financial Intelligence & Architecture Lab</title>
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+  <!-- Ambient background glow layers -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Main Application Wrapper -->
+  <div class="app-layout">
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+      <div class="brand-container">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+            <polyline points="16 7 22 7 22 13"></polyline>
+          </svg>
+        </div>
+        <div class="brand-meta">
+          <div class="brand-title">Expense Tracker</div>
+          <div class="brand-sub">Personal Financial Intelligence Engine</div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs" id="mainNav">
+        <button class="nav-tab active" data-tab="trackerTab">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          Financial Command Center
+        </button>
+        <button class="nav-tab" data-tab="milestoneStudioTab">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+          Milestone Progression Studio
+        </button>
+        <button class="nav-tab" data-tab="docsTab">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Technical Dossier
+        </button>
+      </nav>
+
+      <!-- System Diagnostic Status Pill & Auth Simulator -->
+      <div class="header-actions">
+        <div class="backend-status-badge" id="backendStatusPill" title="Backend Server Connectivity">
+          <span class="pulse-dot"></span>
+          <span id="backendStatusText">Connecting...</span>
+        </div>
+        <div class="user-pill" id="userPill" onclick="toggleUserAuthModal()">
+          <span class="user-avatar" id="userAvatar">SG</span>
+          <span class="user-name" id="userNameDisplay">Shankar G</span>
+          <span class="auth-role" id="authBadge">Demo / JWT</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- TAB 1: FINANCIAL COMMAND CENTER (EXPENSE TRACKER) -->
+    <main class="tab-pane active" id="trackerTab">
+      <!-- Top Metrics Dashboard -->
+      <section class="metrics-grid">
+        <div class="metric-card balance-card">
+          <div class="metric-header">
+            <span class="metric-label">Net Available Balance</span>
+            <span class="metric-icon balance-icon">₹</span>
+          </div>
+          <div class="metric-value" id="netBalanceDisplay">₹0.00</div>
+          <div class="metric-footer">
+            <span class="trend-pill positive" id="balanceHealthPill">Healthy Cash Flow</span>
+            <span class="subtext">Real-time ledger balance</span>
+          </div>
+        </div>
+
+        <div class="metric-card income-card">
+          <div class="metric-header">
+            <span class="metric-label">Total Cash Inflow</span>
+            <span class="metric-icon income-icon">↓</span>
+          </div>
+          <div class="metric-value income" id="totalIncomeDisplay">₹0.00</div>
+          <div class="metric-footer">
+            <span class="subtext">Salary, Freelance & Credits</span>
+          </div>
+        </div>
+
+        <div class="metric-card expense-card">
+          <div class="metric-header">
+            <span class="metric-label">Total Expenditures</span>
+            <span class="metric-icon expense-icon">↑</span>
+          </div>
+          <div class="metric-value expense" id="totalExpenseDisplay">₹0.00</div>
+          <div class="metric-footer">
+            <span class="subtext">Living, Bills & Outflows</span>
+          </div>
+        </div>
+
+        <div class="metric-card savings-card">
+          <div class="metric-header">
+            <span class="metric-label">Net Savings Rate</span>
+            <span class="metric-icon savings-icon">%</span>
+          </div>
+          <div class="metric-value" id="savingsRateDisplay">0%</div>
+          <div class="metric-progress-bar">
+            <div class="progress-fill" id="savingsProgressBar" style="width: 0%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Charts & Visual Analytics Section -->
+      <section class="analytics-row">
+        <!-- Category Breakdown Visualizer -->
+        <div class="analytics-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>Category Allocation Breakdown</span>
+              <span class="tag">Expenditure Matrix</span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="categoryDonutChart" width="280" height="280"></canvas>
+            <div class="chart-legend" id="categoryLegend"></div>
+          </div>
+        </div>
+
+        <!-- Monthly Flow / Category Spend Comparison -->
+        <div class="analytics-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>Spending by Category</span>
+              <span class="tag">Budget Comparison</span>
+            </div>
+          </div>
+          <div class="bar-chart-container" id="categoryBarContainer">
+            <!-- Dynamic Category Bars Rendered Here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Transactions & CRUD Operations Hub -->
+      <section class="transactions-section">
+        <div class="section-toolbar">
+          <div class="toolbar-left">
+            <h2 class="section-title">Financial Ledger & Transactions</h2>
+            <span class="record-counter" id="recordCounter">0 records</span>
+          </div>
+
+          <!-- Toolbar Controls -->
+          <div class="toolbar-actions">
+            <!-- Search Input -->
+            <div class="search-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="searchInput" placeholder="Search description, title..." oninput="handleSearchFilter()">
+            </div>
+
+            <!-- Category Filter Dropdown -->
+            <select id="categoryFilter" class="select-dropdown" onchange="handleSearchFilter()">
+              <option value="All">All Categories</option>
+              <option value="Food">Food & Dining</option>
+              <option value="Housing">Housing & Rent</option>
+              <option value="Travel">Travel & Transit</option>
+              <option value="Utilities">Utilities & Bills</option>
+              <option value="Healthcare">Healthcare & Fitness</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Education">Education</option>
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+            </select>
+
+            <!-- Type Filter Dropdown -->
+            <select id="typeFilter" class="select-dropdown" onchange="handleSearchFilter()">
+              <option value="All">All Types</option>
+              <option value="expense">Expenses Only</option>
+              <option value="income">Income Only</option>
+            </select>
+
+            <!-- Sort Dropdown -->
+            <select id="sortFilter" class="select-dropdown" onchange="handleSearchFilter()">
+              <option value="date_desc">Newest First</option>
+              <option value="date_asc">Oldest First</option>
+              <option value="amount_desc">Highest Amount</option>
+              <option value="amount_asc">Lowest Amount</option>
+            </select>
+
+            <!-- Export Button -->
+            <button class="btn btn-secondary" onclick="exportTransactionsCSV()" title="Export CSV">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Export
+            </button>
+
+            <!-- Add Entry Primary Button -->
+            <button class="btn btn-primary" onclick="openTransactionModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Entry
+            </button>
+          </div>
+        </div>
+
+        <!-- Ledger Table Container -->
+        <div class="table-wrapper">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Title & Description</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th class="text-right">Amount</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="transactionsTableBody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+          <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-icon">📂</div>
+            <h3>No Transactions Found</h3>
+            <p>Try adjusting your search criteria or add your first income or expense.</p>
+            <button class="btn btn-primary btn-sm" onclick="openTransactionModal()">Create New Entry</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- TAB 2: MILESTONE PROGRESSION STUDIO (INTERACTIVE LAB ENGINE) -->
+    <main class="tab-pane" id="milestoneStudioTab">
+      <div class="studio-header">
+        <div class="studio-meta">
+          <span class="studio-badge">Interactive Technical Workbench</span>
+          <h1 class="studio-title">Engineering Milestones & Architecture Lab</h1>
+          <p class="studio-desc">Hands-on interactive simulations, live Event Loop tracer, API test console, middleware flow interceptors, and cryptographic playgrounds mapping out Milestones 01 through 07.</p>
+        </div>
+      </div>
+
+      <!-- Milestone Interactive Horizontal Stepper -->
+      <div class="stepper-container">
+        <div class="stepper-bar">
+          <button class="step-btn active" data-step="1" onclick="switchMilestone(1)">
+            <span class="step-num">01</span>
+            <span class="step-title">Project Inception</span>
+          </button>
+          <button class="step-btn" data-step="2" onclick="switchMilestone(2)">
+            <span class="step-num">02</span>
+            <span class="step-title">Event Loop Engine</span>
+          </button>
+          <button class="step-btn" data-step="3" onclick="switchMilestone(3)">
+            <span class="step-num">03</span>
+            <span class="step-title">REST Routing</span>
+          </button>
+          <button class="step-btn" data-step="4" onclick="switchMilestone(4)">
+            <span class="step-num">04</span>
+            <span class="step-title">Middleware Pipeline</span>
+          </button>
+          <button class="step-btn" data-step="5" onclick="switchMilestone(5)">
+            <span class="step-num">05</span>
+            <span class="step-title">Database Modeling</span>
+          </button>
+          <button class="step-btn" data-step="6" onclick="switchMilestone(6)">
+            <span class="step-num">06</span>
+            <span class="step-title">CRUD & Filtering</span>
+          </button>
+          <button class="step-btn" data-step="7" onclick="switchMilestone(7)">
+            <span class="step-num">07</span>
+            <span class="step-title">Bcrypt & JWT Auth</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Milestone Interactive Playgrounds Container -->
+      <div class="milestone-content-area">
+
+        <!-- MILESTONE 1 PANEL -->
+        <div class="milestone-panel active" id="milestonePanel-1">
+          <div class="panel-hero">
+            <div class="panel-tag">Milestone 01 • Inception & Runtime Specification</div>
+            <h2>Project Architecture, Charter & Requirements Matrix</h2>
+            <p>Node.js runtime initialization, NPM ecosystem setup, server-side scripting environment, and Software Requirements Specification (SRS) baseline.</p>
+          </div>
+
+          <div class="studio-grid two-col">
+            <!-- Project Charter Card -->
+            <div class="lab-card">
+              <div class="lab-card-header">
+                <h3>Executive Project Charter</h3>
+                <span class="badge success">Verified Baseline</span>
+              </div>
+              <div class="spec-list">
+                <div class="spec-item">
+                  <span class="spec-label">Project Title:</span>
+                  <span class="spec-val">Personal Expense Tracker ("Expense Tracker")</span>
+                </div>
+                <div class="spec-item">
+                  <span class="spec-label">Runtime Engine:</span>
+                  <span class="spec-val">Node.js (v24.21.0) & NPM (11.19.0)</span>
+                </div>
+                <div class="spec-item">
+                  <span class="spec-label">Core Paradigm:</span>
+                  <span class="spec-val">Asynchronous Non-Blocking Event-Driven REST API</span>
+                </div>
+                <div class="spec-item">
+                  <span class="spec-label">Data Persistence:</span>
+                  <span class="spec-val">MongoDB Atlas Cloud Replica Cluster</span>
+                </div>
+                <div class="spec-item">
+                  <span class="spec-label">Security Protocol:</span>
+                  <span class="spec-val">Bcrypt Salt Hashing (10 rounds) + JWT Bearer Tokens</span>
+                </div>
+                <div class="spec-item">
+                  <span class="spec-label">GitHub Monitoring:</span>
+                  <span class="spec-val">Repository initialized, README, .gitignore configured</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive Requirements Verification Matrix -->
+            <div class="lab-card">
+              <div class="lab-card-header">
+                <h3>Interactive Requirements Matrix</h3>
+                <span class="badge">Click to Validate</span>
+              </div>
+              <div class="req-checklist">
+                <label class="check-item">
+                  <input type="checkbox" checked disabled>
+                  <span><strong>FR-01:</strong> User Registration with Bcrypt Password Hashing</span>
+                </label>
+                <label class="check-item">
+                  <input type="checkbox" checked disabled>
+                  <span><strong>FR-02:</strong> JWT Token Generation and Stateless Authorization</span>
+                </label>
+                <label class="check-item">
+                  <input type="checkbox" checked disabled>
+                  <span><strong>FR-03:</strong> Expense & Income Complete CRUD API Endpoints</span>
+                </label>
+                <label class="check-item">
+                  <input type="checkbox" checked disabled>
+                  <span><strong>FR-04:</strong> Multi-Criteria Query Filtering (Category, Date, Type)</span>
+                </label>
+                <label class="check-item">
+                  <input type="checkbox" checked disabled>
+                  <span><strong>NFR-01:</strong> Request Logging & Centralized Error Middleware</span>
+                </label>
+                <label class="check-item">
+                  <input type="checkbox" checked disabled>
+                  <span><strong>NFR-02:</strong> Sub-100ms API Latency & Responsive Glassmorphic UI</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MILESTONE 2 PANEL: EVENT LOOP SIMULATOR -->
+        <div class="milestone-panel" id="milestonePanel-2">
+          <div class="panel-hero">
+            <div class="panel-tag">Milestone 02 • Architecture & Asynchronous Programming</div>
+            <h2>Interactive Node.js Event Loop Engine Simulator</h2>
+            <p>Live visual demonstration of Call Stack execution, Microtask Queue (Promises) prioritization, and Macrotask Queue (Timers) resolution based on <code>eventloop.js</code>.</p>
+          </div>
+
+          <div class="lab-card">
+            <div class="event-loop-toolbar">
+              <div class="code-preview-compact">
+                <code>eventloop.js: 1. Start → setTimeout(4. Timeout) → Promise.resolve(3. Promise) → 2. End</code>
+              </div>
+              <div class="event-controls">
+                <button class="btn btn-primary btn-sm" id="runEventLoopBtn" onclick="runEventLoopSimulation()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                  Run Simulation
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="resetEventLoopSimulation()">Reset</button>
+              </div>
+            </div>
+
+            <!-- Graphical Event Loop Visualizer -->
+            <div class="event-loop-visualizer">
+              <div class="el-column">
+                <div class="el-column-title">1. Call Stack (Synchronous)</div>
+                <div class="el-box" id="elCallStack">
+                  <div class="el-placeholder">Idle</div>
+                </div>
+              </div>
+
+              <div class="el-column">
+                <div class="el-column-title">2. Microtask Queue (Promises)</div>
+                <div class="el-box microtask-box" id="elMicrotask">
+                  <div class="el-placeholder">Empty</div>
+                </div>
+              </div>
+
+              <div class="el-column">
+                <div class="el-column-title">3. Macrotask Queue (Timers)</div>
+                <div class="el-box macrotask-box" id="elMacrotask">
+                  <div class="el-placeholder">Empty</div>
+                </div>
+              </div>
+
+              <div class="el-column">
+                <div class="el-column-title">4. Output Terminal</div>
+                <div class="el-box console-box" id="elConsole">
+                  <div class="console-line text-muted">> Ready to simulate...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="el-explanation" id="elExplanation">
+              Press "Run Simulation" to watch synchronous execution, microtask queue resolution, and macrotask execution order in real time.
+            </div>
+          </div>
+        </div>
+
+        <!-- MILESTONE 3 PANEL: REST API SANDBOX -->
+        <div class="milestone-panel" id="milestonePanel-3">
+          <div class="panel-hero">
+            <div class="panel-tag">Milestone 03 • Express.js Routing & Request/Response</div>
+            <h2>Interactive REST API Endpoint Console</h2>
+            <p>Live HTTP request builder and response inspector for Express route verification (`/api/expenses`, `/api/expenses/summary`, `/api/users/profile`, `/api/health`).</p>
+          </div>
+
+          <div class="api-console-grid">
+            <!-- Request Builder -->
+            <div class="lab-card">
+              <div class="lab-card-header">
+                <h3>Request Builder</h3>
+                <span class="badge">Live HTTP Sandbox</span>
+              </div>
+              <div class="api-form">
+                <div class="form-row">
+                  <select id="apiMethodSelect" class="select-dropdown method-select" onchange="updateApiPresetPayload()">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                  </select>
+                  <select id="apiEndpointSelect" class="select-dropdown flex-1" onchange="updateApiPresetPayload()">
+                    <option value="/api/health">/api/health (System Diagnostics)</option>
+                    <option value="/api/expenses">/api/expenses (Fetch Transactions)</option>
+                    <option value="/api/expenses/summary">/api/expenses/summary (Financial Aggregation)</option>
+                    <option value="/api/users/profile">/api/users/profile (Protected User Profile)</option>
+                  </select>
+                  <button class="btn btn-primary" onclick="sendApiConsoleRequest()">Send</button>
+                </div>
+
+                <div class="form-group" id="apiPayloadGroup" style="display: none;">
+                  <label class="form-label">Request JSON Payload:</label>
+                  <textarea id="apiPayloadText" class="code-textarea" rows="5"></textarea>
+                </div>
+
+                <div class="api-token-info">
+                  <span class="subtext">Header injected:</span>
+                  <code id="activeBearerCode">Authorization: Bearer <Active_JWT_Token></code>
+                </div>
+              </div>
+            </div>
+
+            <!-- Response Inspector -->
+            <div class="lab-card">
+              <div class="lab-card-header">
+                <h3>Response Inspector</h3>
+                <div class="response-status-group">
+                  <span class="badge" id="apiStatusBadge">200 OK</span>
+                  <span class="subtext" id="apiLatencyBadge">0ms</span>
+                </div>
+              </div>
+              <pre class="json-inspector" id="apiResponseInspector">// Click 'Send' to inspect live server response</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- MILESTONE 4 PANEL: MIDDLEWARE PIPELINE -->
+        <div class="milestone-panel" id="milestonePanel-4">
+          <div class="panel-hero">
+            <div class="panel-tag">Milestone 04 • Middleware Pipeline & Error Handling</div>
+            <h2>Interactive Middleware Interception Visualizer</h2>
+            <p>Visualizing the HTTP request lifecycle: Incoming Request → Logger Middleware → Auth Guard → Route Controller → Centralized Error Interceptor → Response.</p>
+          </div>
+
+          <div class="lab-card">
+            <div class="pipeline-controls">
+              <span class="subtext">Simulate Request Scenario:</span>
+              <div class="btn-group">
+                <button class="btn btn-secondary btn-sm active" onclick="simulateMiddlewareFlow('success')">Standard 200 Success</button>
+                <button class="btn btn-secondary btn-sm" onclick="simulateMiddlewareFlow('no_token')">401 No Token</button>
+                <button class="btn btn-secondary btn-sm" onclick="simulateMiddlewareFlow('validation_error')">400 Validation Error</button>
+                <button class="btn btn-secondary btn-sm" onclick="simulateMiddlewareFlow('server_crash')">500 Server Error Interceptor</button>
+              </div>
+            </div>
+
+            <!-- Pipeline Flow Diagram -->
+            <div class="pipeline-flow" id="pipelineFlow">
+              <div class="pipeline-node" id="nodeRequest">
+                <div class="node-icon">🌐</div>
+                <div class="node-title">Incoming Request</div>
+                <div class="node-sub">HTTP Method & Path</div>
+              </div>
+
+              <div class="pipeline-arrow" id="arrow1">→</div>
+
+              <div class="pipeline-node" id="nodeLogger">
+                <div class="node-icon">📝</div>
+                <div class="node-title">loggerMiddleware</div>
+                <div class="node-sub">Timestamp & Log</div>
+              </div>
+
+              <div class="pipeline-arrow" id="arrow2">→</div>
+
+              <div class="pipeline-node" id="nodeAuth">
+                <div class="node-icon">🛡️</div>
+                <div class="node-title">authMiddleware</div>
+                <div class="node-sub">Verify Bearer JWT</div>
+              </div>
+
+              <div class="pipeline-arrow" id="arrow3">→</div>
+
+              <div class="pipeline-node" id="nodeController">
+                <div class="node-icon">⚡</div>
+                <div class="node-title">Route Controller</div>
+                <div class="node-sub">CRUD Logic</div>
+              </div>
+
+              <div class="pipeline-arrow" id="arrow4">→</div>
+
+              <div class="pipeline-node" id="nodeError">
+                <div class="node-icon">⚠️</div>
+                <div class="node-title">errorMiddleware</div>
+                <div class="node-sub">Exception Handler</div>
+              </div>
+
+              <div class="pipeline-arrow" id="arrow5">→</div>
+
+              <div class="pipeline-node" id="nodeResponse">
+                <div class="node-icon">📦</div>
+                <div class="node-title">Final Response</div>
+                <div class="node-sub" id="nodeResponseStatus">200 JSON</div>
+              </div>
+            </div>
+
+            <div class="pipeline-log-card" id="pipelineExplanation">
+              <strong>Execution Flow:</strong> Request intercepted by <code>loggerMiddleware</code> → parsed headers → validated via <code>authMiddleware</code> → executed controller logic → dispatched HTTP 200 OK.
+            </div>
+          </div>
+        </div>
+
+        <!-- MILESTONE 5 PANEL: DATABASE MODELING -->
+        <div class="milestone-panel" id="milestonePanel-5">
+          <div class="panel-hero">
+            <div class="panel-tag">Milestone 05 • Cloud Database & Schema Design</div>
+            <h2>MongoDB Atlas & Mongoose Data Modeling Inspector</h2>
+            <p>Cloud connection handshake status and interactive collection schema diagrams for User and Expense entities.</p>
+          </div>
+
+          <div class="studio-grid two-col">
+            <!-- Expense Schema -->
+            <div class="lab-card">
+              <div class="lab-card-header">
+                <h3>Expense Collection Schema (Mongoose)</h3>
+                <span class="badge primary">Mongoose Model</span>
+              </div>
+              <div class="schema-table-wrap">
+                <table class="schema-table">
+                  <thead>
+                    <tr><th>Field</th><th>Type</th><th>Constraint</th><th>Description</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td><code>title</code></td><td>String</td><td>required, trim</td><td>Transaction title</td></tr>
+                    <tr><td><code>amount</code></td><td>Number</td><td>required, min: 0.01</td><td>Positive monetary value</td></tr>
+                    <tr><td><code>category</code></td><td>String</td><td>required</td><td>Category descriptor</td></tr>
+                    <tr><td><code>type</code></td><td>String</td><td>enum['expense','income']</td><td>Transaction type</td></tr>
+                    <tr><td><code>date</code></td><td>Date</td><td>default: Date.now</td><td>Execution date</td></tr>
+                    <tr><td><code>description</code></td><td>String</td><td>optional</td><td>Extended transaction notes</td></tr>
+                    <tr><td><code>user</code></td><td>ObjectId</td><td>ref: 'User'</td><td>Foreign key to User</td></tr>
+                    <tr><td><code>createdAt</code></td><td>Date</td><td>auto timestamp</td><td>Record creation time</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- User Schema -->
+            <div class="lab-card">
+              <div class="lab-card-header">
+                <h3>User Collection Schema (Mongoose)</h3>
+                <span class="badge primary">Mongoose Model</span>
+              </div>
+              <div class="schema-table-wrap">
+                <table class="schema-table">
+                  <thead>
+                    <tr><th>Field</th><th>Type</th><th>Constraint</th><th>Description</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td><code>name</code></td><td>String</td><td>required</td><td>User display name</td></tr>
+                    <tr><td><code>email</code></td><td>String</td><td>required, unique</td><td>Indexed unique email</td></tr>
+                    <tr><td><code>password</code></td><td>String</td><td>required</td><td>Bcrypt salted hash</td></tr>
+                    <tr><td><code>createdAt</code></td><td>Date</td><td>auto timestamp</td><td>Registration date</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="schema-footer-action">
+                <button class="btn btn-secondary btn-sm" onclick="generateSampleBSON()">
+                  Generate Sample BSON Document
+                </button>
+                <pre class="json-inspector compact" id="sampleBSONInspector">// Click button to inspect BSON payload</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MILESTONE 6 PANEL: CRUD & FILTERING -->
+        <div class="milestone-panel" id="milestonePanel-6">
+          <div class="panel-hero">
+            <div class="panel-tag">Milestone 06 • CRUD Operations & Filtering Engine</div>
+            <h2>Query Filter Engine & Aggregation Playground</h2>
+            <p>Test dynamic MongoDB query parameters (`category`, `type`, `startDate`, `endDate`, `search`, `sort`) with real-time query string synthesis.</p>
+          </div>
+
+          <div class="lab-card">
+            <div class="query-builder-form">
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label class="form-label">Category Filter:</label>
+                  <select id="qbCategory" class="select-dropdown" onchange="runQueryBuilderTest()">
+                    <option value="">(Any Category)</option>
+                    <option value="Food">Food</option>
+                    <option value="Housing">Housing</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Salary">Salary</option>
+                  </select>
+                </div>
+
+                <div class="form-group flex-1">
+                  <label class="form-label">Type Filter:</label>
+                  <select id="qbType" class="select-dropdown" onchange="runQueryBuilderTest()">
+                    <option value="">(Any Type)</option>
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                  </select>
+                </div>
+
+                <div class="form-group flex-1">
+                  <label class="form-label">Sort Order:</label>
+                  <select id="qbSort" class="select-dropdown" onchange="runQueryBuilderTest()">
+                    <option value="date_desc">Newest First (date: -1)</option>
+                    <option value="date_asc">Oldest First (date: 1)</option>
+                    <option value="amount_desc">Highest Amount (amount: -1)</option>
+                    <option value="amount_asc">Lowest Amount (amount: 1)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="query-output-box">
+                <span class="subtext">Synthesized Express Query URL:</span>
+                <code class="query-url-display" id="synthesizedQueryUrl">GET /api/expenses</code>
+              </div>
+            </div>
+
+            <!-- Query Filter Results Table -->
+            <div class="table-wrapper compact-table">
+              <table class="ledger-table">
+                <thead>
+                  <tr><th>Title</th><th>Category</th><th>Type</th><th>Amount</th><th>Date</th></tr>
+                </thead>
+                <tbody id="qbResultsTableBody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- MILESTONE 7 PANEL: BCRYPT & JWT LAB -->
+        <div class="milestone-panel" id="milestonePanel-7">
+          <div class="panel-hero">
+            <div class="panel-tag">Milestone 07 • Authentication, Bcrypt & JWT Security</div>
+            <h2>Cryptographic Identity & Security Playground</h2>
+            <p>Interactive demonstration of Bcrypt password salting & hashing, verification comparisons, and JSON Web Token (JWT) encoding, decoding, and signature validation.</p>
+          </div>
+
+          <div class="studio-grid two-col">
+            <!-- Bcrypt Hasher Playground -->
+            <div class="lab-card">
+              <div class="lab-card-header">
+                <h3>Bcrypt Salt & Hash Generator</h3>
+                <span class="badge primary">Salt Rounds: 10</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Plaintext Password:</label>
+                <input type="text" id="bcryptInput" class="form-input" value="SecurePassword123" placeholder="Enter password to hash">
+              </div>
+
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label class="form-label">Salt Rounds (Cost):</label>
+                  <input type="number" id="bcryptSaltRounds" class="form-input" value="10" min="4" max="14">
+                </div>
+                <div class="form-group align-end">
+                  <button class="btn btn-primary" onclick="simulateBcryptHash()">Generate Hash</button>
+                </div>
+              </div>
+
+              <div class="hash-output-container">
+                <label class="form-label">Generated 60-Char Bcrypt Hash:</label>
+                <div class="hash-box" id="bcryptHashDisplay">$2a$10$e8Z4k9Z1... (Click 'Generate Hash')</div>
+                <div class="hash-breakdown" id="bcryptBreakdown">
+                  <span class="hb-part hb-algo">$2a$</span>
+                  <span class="hb-part hb-cost">10$</span>
+                  <span class="hb-part hb-salt">[22-char salt]</span>
+                  <span class="hb-part hb-cipher">[31-char hash]</span>
+                </div>
+              </div>
+
+              <div class="compare-box">
+                <label class="form-label">Test <code>bcrypt.compare()</code> Candidate:</label>
+                <div class="form-row">
+                  <input type="text" id="bcryptCompareInput" class="form-input flex-1" value="SecurePassword123" placeholder="Candidate password">
+                  <button class="btn btn-secondary" onclick="simulateBcryptCompare()">Verify</button>
+                </div>
+                <div class="compare-result" id="bcryptCompareResult">Ready to verify candidate</div>
+              </div>
+            </div>
+
+            <!-- JWT Token Lab -->
+            <div class="lab-card">
+              <div class="lab-card-header">
+                <h3>JSON Web Token (JWT) Workshop</h3>
+                <span class="badge success">Algorithm: HS256</span>
+              </div>
+
+              <div class="jwt-visualizer">
+                <div class="jwt-part jwt-header-box">
+                  <span class="part-title">1. HEADER (Algorithm & Type)</span>
+                  <pre class="json-mini">{ "alg": "HS256", "typ": "JWT" }</pre>
+                </div>
+                <div class="jwt-part jwt-payload-box">
+                  <span class="part-title">2. PAYLOAD (User Claims & Expiry)</span>
+                  <pre class="json-mini" id="jwtPayloadDisplay">{ "id": "673f8e91a03e1b0021c3b12a", "email": "shankar@example.com", "role": "lead_dev" }</pre>
+                </div>
+                <div class="jwt-part jwt-sig-box">
+                  <span class="part-title">3. SIGNATURE (HMACSHA256)</span>
+                  <div class="sig-text">HMACSHA256(base64Url(header) + "." + base64Url(payload), JWT_SECRET)</div>
+                </div>
+              </div>
+
+              <div class="token-field-group">
+                <label class="form-label">Full Encoded Bearer Token:</label>
+                <div class="encoded-token-display" id="encodedJwtDisplay">
+                  <span class="jwt-red" id="jwtP1">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span>.<span class="jwt-purple" id="jwtP2">eyJpZCI6IjY3M2Y4ZTkxYTAzZTFiMDAyMWMzYjEyYSIsImVtYWlsIjoic2hhbmthckBleGFtcGxlLmNvbSIsImlhdCI6MTczMjc4MDAwMCwiZXhwIjoxNzMzMzg0ODAwfQ</span>.<span class="jwt-cyan" id="jwtP3">D2s8V5q3N_K1l_0x9P-Z7mU2w8Y</span>
+                </div>
+              </div>
+
+              <div class="jwt-action-row">
+                <button class="btn btn-primary btn-sm" onclick="regenerateJwtDemo()">Regenerate Token</button>
+                <button class="btn btn-secondary btn-sm" onclick="copyJwtToClipboard()">Copy Token</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- TAB 3: TECHNICAL DOSSIER & LAB RECORDS -->
+    <main class="tab-pane" id="docsTab">
+      <div class="docs-container">
+        <div class="docs-sidebar">
+          <div class="docs-nav-title">Technical Documentation</div>
+          <button class="doc-link active" onclick="loadDocSection('doc-milestones')">Milestone Progression Report</button>
+          <button class="doc-link" onclick="loadDocSection('doc-requirements')">Requirements Specification (SRS)</button>
+          <button class="doc-link" onclick="loadDocSection('doc-db')">Database Design & ER Diagram</button>
+          <button class="doc-link" onclick="loadDocSection('doc-api')">REST API Specification</button>
+          <button class="doc-link" onclick="loadDocSection('doc-testing')">Testing Report & Verification</button>
+        </div>
+
+        <div class="docs-article" id="docsArticle">
+          <!-- Dynamically populated or switchable -->
+          <div class="doc-content-section active" id="doc-milestones">
+            <h1>Milestone Progression & Technical Deliverables</h1>
+            <p class="lead">Complete academic and practical lab report documenting Milestones 01 through 07 for the Personal Expense Tracker.</p>
+            <div class="doc-badge-row">
+              <span class="badge primary">Scope: Milestones 01 — 07</span>
+              <span class="badge success">Status: 100% Complete</span>
+              <span class="badge">Author: Shankar G</span>
+            </div>
+
+            <hr class="doc-divider">
+
+            <h3>Milestone 01: Project Inception & Node Runtime Environment</h3>
+            <ul>
+              <li><strong>Technical Focus:</strong> Node.js initialization, NPM ecosystem, server-side scripting runtime.</li>
+              <li><strong>Deliverables:</strong> Problem statement, project charter, functional/non-functional requirements, technology stack matrix, and GitHub repository baseline.</li>
+              <li><strong>Verification:</strong> Node v24.21.0, NPM 11.19.0 verified; root package.json and repository initialized.</li>
+            </ul>
+
+            <h3>Milestone 02: Event Loop Architecture & Modular System Design</h3>
+            <ul>
+              <li><strong>Technical Focus:</strong> Node.js Event Loop phases, synchronous execution vs Microtask Queue vs Macrotask Queue.</li>
+              <li><strong>Deliverables:</strong> <code>eventloop.js</code> script executing Call Stack → Microtask (Promises) → Macrotask (Timers); Model-View-Controller (MVC) directory structure.</li>
+              <li><strong>Verification:</strong> Observed output logged: <code>1. Start → 2. End → 3. Promise Callback → 4. Timeout Callback</code>.</li>
+            </ul>
+
+            <h3>Milestone 03: Express REST Routing & Protocol Layer</h3>
+            <ul>
+              <li><strong>Technical Focus:</strong> Express.js framework, HTTP verbs (GET, POST, PUT, DELETE), JSON body parsing, and route handlers.</li>
+              <li><strong>Deliverables:</strong> Express server listening on port 5000, <code>/api/expenses</code> and <code>/api/users</code> routes registered.</li>
+              <li><strong>Verification:</strong> Clean JSON request/response cycles verified via Postman and interactive REST console.</li>
+            </ul>
+
+            <h3>Milestone 04: Middleware Pipeline & Resilient Error Interceptor</h3>
+            <ul>
+              <li><strong>Technical Focus:</strong> Middleware chaining, request logging, CORS handling, and centralized error interception.</li>
+              <li><strong>Deliverables:</strong> <code>loggerMiddleware.js</code> capturing timestamps & routes; <code>errorMiddleware.js</code> catching unexpected exceptions with uniform JSON responses.</li>
+              <li><strong>Verification:</strong> All requests logged to stdout; 500 errors gracefully handled without crashing the server process.</li>
+            </ul>
+
+            <h3>Milestone 05: Cloud Database Integration & Data Modeling</h3>
+            <ul>
+              <li><strong>Technical Focus:</strong> MongoDB Atlas cloud database, Mongoose ODM schemas, field constraints, and .env secret management.</li>
+              <li><strong>Deliverables:</strong> <code>server/config/db.js</code> connection module, <code>Expense.js</code> and <code>User.js</code> Mongoose schemas.</li>
+              <li><strong>Verification:</strong> Handshake to Atlas cluster confirmed: <code>MongoDB Connected: ac-jma4bjr-shard-00-01.bh9uccy.mongodb.net</code>.</li>
+            </ul>
+
+            <h3>Milestone 06: CRUD Engine, Advanced Querying & Filtering</h3>
+            <ul>
+              <li><strong>Technical Focus:</strong> Full CRUD operations, dynamic filtering (category, type, date range, search), and financial summaries.</li>
+              <li><strong>Deliverables:</strong> <code>expenseController.js</code> supporting multi-attribute querying, real-time calculations for balance, income, expense, and savings rate.</li>
+              <li><strong>Verification:</strong> Full suite of Create, Read, Update, Delete test cases passed (201 Created, 200 OK).</li>
+            </ul>
+
+            <h3>Milestone 07: Cryptographic Authentication, Bcrypt Hashing & JWT Security</h3>
+            <ul>
+              <li><strong>Technical Focus:</strong> User registration, salted password hashing via Bcrypt, stateless JWT issuance, and route protection guards.</li>
+              <li><strong>Deliverables:</strong> <code>registerUser</code> and <code>loginUser</code> controllers; 10 salt rounds with Bcrypt; <code>authMiddleware.js</code> validating Bearer tokens.</li>
+              <li><strong>Verification:</strong> Passwords stored strictly as 60-character hashes; protected endpoints reject missing or invalid tokens with HTTP 401 Unauthorized.</li>
+            </ul>
+          </div>
+
+          <div class="doc-content-section" id="doc-requirements">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="doc-content-section" id="doc-db">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="doc-content-section" id="doc-api">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="doc-content-section" id="doc-testing">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- CREATE / EDIT TRANSACTION MODAL -->
+  <div class="modal-overlay" id="transactionModalOverlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle">Create New Transaction</h3>
+        <button class="modal-close" onclick="closeTransactionModal()">&times;</button>
+      </div>
+
+      <form id="transactionForm" onsubmit="handleTransactionSubmit(event)">
+        <input type="hidden" id="txId">
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label class="form-label">Transaction Type *</label>
+            <div class="type-toggle-group">
+              <label class="type-pill">
+                <input type="radio" name="txType" value="expense" checked onchange="updateCategoryOptions()">
+                <span>Expense (Outflow)</span>
+              </label>
+              <label class="type-pill">
+                <input type="radio" name="txType" value="income" onchange="updateCategoryOptions()">
+                <span>Income (Inflow)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Title / Payee *</label>
+          <input type="text" id="txTitle" class="form-input" placeholder="e.g. Grocery Supermarket, Salary Credit" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label class="form-label">Amount (₹) *</label>
+            <input type="number" id="txAmount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required>
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Category *</label>
+            <select id="txCategory" class="select-dropdown w-100" required>
+              <!-- Populated dynamically based on type -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Effective Date *</label>
+          <input type="date" id="txDate" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description / Remarks (Optional)</label>
+          <textarea id="txDescription" class="form-input" rows="2" placeholder="Optional notes, receipt tags, or payment reference"></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeTransactionModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveTxBtn">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- AUTH / USER PROFILE MODAL -->
+  <div class="modal-overlay" id="userAuthModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>User Identity & JWT Token Configuration</h3>
+        <button class="modal-close" onclick="toggleUserAuthModal()">&times;</button>
+      </div>
+      <div class="auth-modal-body">
+        <div class="user-meta-preview">
+          <div class="user-big-avatar">SG</div>
+          <div class="user-big-details">
+            <h4 id="authModalUserName">Shankar G</h4>
+            <p id="authModalUserEmail">shankar007139@fsd.college.edu</p>
+            <span class="badge success">Role: Full-Stack Developer</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Active Bearer JWT Token:</label>
+          <textarea class="code-textarea" id="activeJwtTextarea" rows="3" readonly></textarea>
+        </div>
+
+        <div class="auth-buttons-row">
+          <button class="btn btn-primary btn-sm" onclick="loginDemoAccount()">Refresh Token</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleUserAuthModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Core Application Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>

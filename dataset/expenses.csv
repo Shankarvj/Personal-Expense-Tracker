@@ -1,0 +1,15 @@
+title,amount,category,type,date,description
+Monthly Salary Credit,75000,Salary,income,2026-09-01,Direct deposit monthly salary
+Apartment Rent,18000,Housing,expense,2026-09-02,Monthly apartment lease payment
+Supermarket Groceries,4250,Food,expense,2026-09-05,Fresh vegetables dairy and pantry items
+Electricity & Utility Bill,2100,Utilities,expense,2026-09-08,Power and municipal water bill
+High-speed Fiber Broadband,1299,Utilities,expense,2026-09-10,Monthly internet subscription
+Fuel & Metro Card Reload,3500,Travel,expense,2026-09-12,Commute fuel and metro transit
+Freelance Web Development,22500,Freelance,income,2026-09-15,UI/UX consulting milestone payment
+Evening Dining & Bistro,2850,Food,expense,2026-09-18,Dinner with colleagues
+Movie Tickets & Streaming,1150,Entertainment,expense,2026-09-20,Cinema tickets and subscription
+Health Checkup & Pharmacy,1600,Healthcare,expense,2026-09-22,Doctor visit and vitamins
+Gym Membership Fee,2000,Healthcare,expense,2026-09-25,Monthly fitness club dues
+Tech Gadget Purchase,4500,Shopping,expense,2026-09-26,Ergonomic wireless keyboard
+Online Course Certification,1999,Education,expense,2026-09-27,Cloud architecture certification prep
+Coffee & Bakery Snacks,780,Food,expense,2026-09-28,Cafeteria snacks and cold brew
