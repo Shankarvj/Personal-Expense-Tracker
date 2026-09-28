@@ -20,8 +20,10 @@ app.use(loggerMiddleware);
 
 // Routes
 const expenseRoutes = require("./routes/expenseRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/users", userRoutes);
 
 // Home Route
 app.get("/", (req, res) => {

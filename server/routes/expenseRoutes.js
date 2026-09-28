@@ -2,15 +2,19 @@ const express = require("express");
 const router = express.Router();
 
 const {
-    getExpenses,
-    createExpense,
-    updateExpense,
-    deleteExpense
+  getExpenses,
+  createExpense,
+  updateExpense,
+  deleteExpense
 } = require("../controllers/expenseController");
 
-router.get("/", getExpenses);
-router.post("/", createExpense);
-router.put("/:id", updateExpense);
-router.delete("/:id", deleteExpense);
+const {
+  protect
+} = require("../middleware/authMiddleware");
+
+router.get("/", protect, getExpenses);
+router.post("/", protect, createExpense);
+router.put("/:id", protect, updateExpense);
+router.delete("/:id", protect, deleteExpense);
 
 module.exports = router;
