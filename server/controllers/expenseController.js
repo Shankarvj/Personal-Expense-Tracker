@@ -1,50 +1,86 @@
-const expenses = [
-    {
-        id: 1,
-        title: "Petrol",
-        amount: 2000,
-        category: "Transport"
-    },
-    {
-        id: 2,
-        title: "Food",
-        amount: 500,
-        category: "Dining"
-    },
-    {
-        id: 3,
-        title: "Movie",
-        amount: 300,
-        category: "Entertainment"
-    }
-];
+const Expense = require("../models/Expense");
 
-const getExpenses = (req, res) => {
+// GET ALL EXPENSES
+const getExpenses = async (req, res) => {
+  try {
+    const expenses = await Expense.find();
+
     res.status(200).json(expenses);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };
 
-const createExpense = (req, res) => {
+// CREATE EXPENSE
+const createExpense = async (req, res) => {
+  try {
+    const expense = await Expense.create(req.body);
+
     res.status(201).json({
-        message: "Expense Created",
-        data: req.body
+      message: "Expense Created Successfully",
+      data: expense,
     });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };
 
-const updateExpense = (req, res) => {
+// UPDATE EXPENSE
+const updateExpense = async (req, res) => {
+  try {
+    const expense = await Expense.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true,
+      }
+    );
+
+    if (!expense) {
+      return res.status(404).json({
+        message: "Expense Not Found",
+      });
+    }
+
     res.status(200).json({
-        message: `Expense ${req.params.id} Updated`
+      message: "Expense Updated Successfully",
+      data: expense,
     });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };
 
-const deleteExpense = (req, res) => {
+// DELETE EXPENSE
+const deleteExpense = async (req, res) => {
+  try {
+    const expense = await Expense.findByIdAndDelete(req.params.id);
+
+    if (!expense) {
+      return res.status(404).json({
+        message: "Expense Not Found",
+      });
+    }
+
     res.status(200).json({
-        message: `Expense ${req.params.id} Deleted`
+      message: "Expense Deleted Successfully",
     });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
 };
 
 module.exports = {
-    getExpenses,
-    createExpense,
-    updateExpense,
-    deleteExpense
+  getExpenses,
+  createExpense,
+  updateExpense,
+  deleteExpense,
 };
