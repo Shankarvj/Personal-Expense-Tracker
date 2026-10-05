@@ -7,13 +7,21 @@
 // Application State
 const state = {
   activeTab: 'trackerTab',
-  activeMilestone: 1,
-  activeDoc: 'doc-milestones',
   backendConnected: false,
   apiBase: '/api',
   currentUser: null,
   jwtToken: localStorage.getItem('auth_token') || '',
   transactions: [],
+  budgets: JSON.parse(localStorage.getItem('expense_tracker_budgets')) || {
+    'Food': 8000,
+    'Housing': 15000,
+    'Travel': 3000,
+    'Utilities': 3500,
+    'Healthcare': 2500,
+    'Entertainment': 3000,
+    'Shopping': 4000,
+    'Education': 5000
+  },
   categoryColors: {
     'Food': '#10b981',
     'Housing': '#8b5cf6',
@@ -37,10 +45,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupNavigation();
   updateCategoryOptions();
   setTodayDateInput();
+  initCalculators();
   await checkBackendStatus();
   await initAuth();
   await loadTransactions();
-  renderMilestoneViews();
+  renderAnalyticsView();
+  renderBudgetPlanner();
 });
 
 // Setup Main Navigation Tabs
@@ -53,12 +63,22 @@ function setupNavigation() {
 
       tab.classList.add('active');
       const targetId = tab.getAttribute('data-tab');
-      document.getElementById(targetId).classList.add('active');
+      const pane = document.getElementById(targetId);
+      if (pane) pane.classList.add('active');
       state.activeTab = targetId;
 
       if (targetId === 'trackerTab') {
         renderLedgerTable();
         renderCharts();
+      } else if (targetId === 'analyticsTab') {
+        renderAnalyticsView();
+      } else if (targetId === 'budgetTab') {
+        renderBudgetPlanner();
+      } else if (targetId === 'toolsTab') {
+        calculateEMI();
+        calculateSIP();
+        calculateEmergencyFund();
+        calculateTax();
       }
     });
   });
@@ -160,15 +180,12 @@ function updateAuthUI() {
     if (profileRole) profileRole.innerText = 'Active Session (JWT Bearer Protected)';
     if (activeJwtTextarea) activeJwtTextarea.value = state.jwtToken;
 
-    // Update JWT visualizer in Milestone 7 if active
-    updateJwtWorkshopDisplay();
   } else {
     // Unauthenticated state
     if (unauthBox) unauthBox.style.display = 'block';
     if (authBox) authBox.style.display = 'none';
     if (guestBanner) guestBanner.style.display = 'flex';
     if (activeJwtTextarea) activeJwtTextarea.value = 'No active JWT token. Please sign in or register to acquire a signed token.';
-    updateJwtWorkshopDisplay();
   }
 }
 
@@ -449,7 +466,9 @@ async function loadTransactions() {
   updateMetrics();
   renderLedgerTable();
   renderCharts();
-  runQueryBuilderTest();
+  renderAnalyticsView();
+  renderBudgetPlanner();
+  calculateEmergencyFund();
 }
 
 // Format Currency
@@ -942,437 +961,638 @@ function exportTransactionsCSV() {
   showToast('CSV Exported successfully', 'success');
 }
 
-// User Profile / Auth Modal
-function toggleUserAuthModal() {
-  const modal = document.getElementById('userAuthModal');
-  modal.classList.toggle('active');
-}
-
-function loginDemoAccount() {
-  regenerateJwtDemo();
-  showToast('JWT Token refreshed', 'success');
+// ========================================================
+// PRINT & STATEMENT EXPORT ENGINE
+// ========================================================
+function printFinancialStatement() {
+  window.print();
 }
 
 // ========================================================
-// MILESTONE PROGRESSION STUDIO LAB ENGINE
+// TAB 2: FINANCIAL ANALYTICS & CASH FLOW ENGINE
 // ========================================================
+function renderAnalyticsView() {
+  const expenses = state.transactions.filter(t => t.type === 'expense');
+  const incomes = state.transactions.filter(t => t.type === 'income');
 
-function switchMilestone(stepNum) {
-  state.activeMilestone = stepNum;
+  const totalExpense = expenses.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const totalIncome = incomes.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-  // Update Stepper buttons
-  document.querySelectorAll('.step-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (parseInt(btn.getAttribute('data-step')) === stepNum) {
-      btn.classList.add('active');
-    }
+  // 1. Daily Outflow Velocity & Burn Rate
+  const uniqueDates = new Set(expenses.map(t => (t.date || t.createdAt || '').substring(0, 10)));
+  const activeDays = Math.max(1, uniqueDates.size);
+  const dailyBurn = totalExpense / activeDays;
+  const daysInCurrentMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const projectedSpend = dailyBurn * daysInCurrentMonth;
+
+  const dailyBurnEl = document.getElementById('dailyBurnDisplay');
+  const burnSubtextEl = document.getElementById('burnRateSubtext');
+  const projectedEl = document.getElementById('projectedSpendDisplay');
+
+  if (dailyBurnEl) dailyBurnEl.innerText = `${formatCurrency(dailyBurn)} / day`;
+  if (burnSubtextEl) burnSubtextEl.innerText = `Calculated across ${activeDays} active recorded days`;
+  if (projectedEl) projectedEl.innerText = formatCurrency(projectedSpend);
+
+  // 2. Top Expense Category
+  const catTotals = {};
+  expenses.forEach(t => {
+    const cat = t.category || 'Other';
+    catTotals[cat] = (catTotals[cat] || 0) + Number(t.amount || 0);
   });
 
-  // Update Panels
-  document.querySelectorAll('.milestone-panel').forEach(panel => {
-    panel.classList.remove('active');
-  });
-  const targetPanel = document.getElementById(`milestonePanel-${stepNum}`);
-  if (targetPanel) targetPanel.classList.add('active');
-}
-
-function renderMilestoneViews() {
-  updateApiPresetPayload();
-  simulateBcryptHash();
-  runQueryBuilderTest();
-}
-
-// --- MILESTONE 2: LIVE EVENT LOOP SIMULATOR ---
-let elSimTimer = null;
-function resetEventLoopSimulation() {
-  if (elSimTimer) clearTimeout(elSimTimer);
-  document.getElementById('elCallStack').innerHTML = '<div class="el-placeholder">Idle</div>';
-  document.getElementById('elMicrotask').innerHTML = '<div class="el-placeholder">Empty</div>';
-  document.getElementById('elMacrotask').innerHTML = '<div class="el-placeholder">Empty</div>';
-  document.getElementById('elConsole').innerHTML = '<div class="console-line text-muted">> Reset complete. Click Run to simulate...</div>';
-  document.getElementById('elExplanation').innerHTML = 'Event Loop reset to baseline state.';
-}
-
-function runEventLoopSimulation() {
-  resetEventLoopSimulation();
-  const callStack = document.getElementById('elCallStack');
-  const microtask = document.getElementById('elMicrotask');
-  const macrotask = document.getElementById('elMacrotask');
-  const term = document.getElementById('elConsole');
-  const exp = document.getElementById('elExplanation');
-
-  term.innerHTML = '<div class="console-line text-muted">> Executing eventloop.js...</div>';
-
-  // Step 1: console.log("1. Start")
-  callStack.innerHTML = '<div class="el-token">console.log("1. Start")</div>';
-  exp.innerText = 'Step 1: Synchronous instruction pushed to Call Stack.';
-
-  setTimeout(() => {
-    term.innerHTML += '<div class="console-line">1. Start</div>';
-    callStack.innerHTML = '<div class="el-placeholder">Call Stack Empty</div>';
-
-    // Step 2: setTimeout(..., 0)
-    setTimeout(() => {
-      callStack.innerHTML = '<div class="el-token">setTimeout(..., 0)</div>';
-      exp.innerText = 'Step 2: setTimeout registered in Timer Web API → pushed to Macrotask Queue.';
-
-      setTimeout(() => {
-        callStack.innerHTML = '<div class="el-placeholder">Call Stack Empty</div>';
-        macrotask.innerHTML = '<div class="el-token macro">Timeout Callback [Macrotask]</div>';
-
-        // Step 3: Promise.resolve().then(...)
-        setTimeout(() => {
-          callStack.innerHTML = '<div class="el-token">Promise.resolve().then(...)</div>';
-          exp.innerText = 'Step 3: Promise callback queued into Microtask Queue.';
-
-          setTimeout(() => {
-            callStack.innerHTML = '<div class="el-placeholder">Call Stack Empty</div>';
-            microtask.innerHTML = '<div class="el-token micro">Promise Callback [Microtask]</div>';
-
-            // Step 4: console.log("2. End")
-            setTimeout(() => {
-              callStack.innerHTML = '<div class="el-token">console.log("2. End")</div>';
-              exp.innerText = 'Step 4: Synchronous console.log("2. End") executes in Call Stack.';
-
-              setTimeout(() => {
-                term.innerHTML += '<div class="console-line">2. End</div>';
-                callStack.innerHTML = '<div class="el-placeholder">Idle</div>';
-
-                // Step 5: Event loop resolves Microtasks first!
-                setTimeout(() => {
-                  exp.innerText = 'Step 5: Call Stack emptied! Event Loop immediately drains Microtask Queue (Promises prioritized).';
-                  callStack.innerHTML = '<div class="el-token micro">Promise Callback</div>';
-                  microtask.innerHTML = '<div class="el-placeholder">Drained</div>';
-
-                  setTimeout(() => {
-                    term.innerHTML += '<div class="console-line">3. Promise Callback</div>';
-                    callStack.innerHTML = '<div class="el-placeholder">Idle</div>';
-
-                    // Step 6: Event loop processes Macrotasks (Timers phase)
-                    setTimeout(() => {
-                      exp.innerText = 'Step 6: Event Loop advances to Timer Phase → executes Macrotask Queue.';
-                      callStack.innerHTML = '<div class="el-token macro">Timeout Callback</div>';
-                      macrotask.innerHTML = '<div class="el-placeholder">Drained</div>';
-
-                      setTimeout(() => {
-                        term.innerHTML += '<div class="console-line">4. Timeout Callback</div>';
-                        callStack.innerHTML = '<div class="el-placeholder">Idle</div>';
-                        term.innerHTML += '<div class="console-line text-muted">> [Process Completed with Code 0]</div>';
-                        exp.innerHTML = '<strong>Verified Execution Order:</strong> <code>1. Start → 2. End → 3. Promise Callback → 4. Timeout Callback</code>. Demonstrates Microtask prioritization over Timers!';
-                      }, 800);
-                    }, 800);
-                  }, 800);
-                }, 900);
-              }, 700);
-            }, 700);
-          }, 700);
-        }, 700);
-      }, 700);
-    }, 700);
-  }, 700);
-}
-
-// --- MILESTONE 3: REST API SANDBOX ---
-function updateApiPresetPayload() {
-  const method = document.getElementById('apiMethodSelect').value;
-  const endpoint = document.getElementById('apiEndpointSelect').value;
-  const payloadGroup = document.getElementById('apiPayloadGroup');
-  const payloadText = document.getElementById('apiPayloadText');
-
-  if (method === 'POST' || method === 'PUT') {
-    payloadGroup.style.display = 'block';
-    if (endpoint === '/api/expenses') {
-      payloadText.value = JSON.stringify({
-        title: 'Cloud Hosting Subscription',
-        amount: 899,
-        category: 'Utilities',
-        type: 'expense',
-        date: new Date().toISOString().split('T')[0],
-        description: 'Monthly VPS cloud server fee'
-      }, null, 2);
-    } else {
-      payloadText.value = JSON.stringify({
-        email: 'shankar@example.com',
-        password: 'SecurePassword123'
-      }, null, 2);
+  let topCat = 'None';
+  let topCatAmt = 0;
+  for (const [cat, amt] of Object.entries(catTotals)) {
+    if (amt > topCatAmt) {
+      topCatAmt = amt;
+      topCat = cat;
     }
-  } else {
-    payloadGroup.style.display = 'none';
   }
+
+  const topExpenseEl = document.getElementById('topExpenseDisplay');
+  const topExpenseSubtextEl = document.getElementById('topExpenseSubtext');
+  if (topExpenseEl) topExpenseEl.innerText = topCat;
+  if (topExpenseSubtextEl) {
+    const pct = totalExpense > 0 ? ((topCatAmt / totalExpense) * 100).toFixed(1) : 0;
+    topExpenseSubtextEl.innerText = `${pct}% of total spending (${formatCurrency(topCatAmt)})`;
+  }
+
+  // 3. Render Trend Charts & Rules
+  renderMonthlyTrendChart();
+  render50_30_20Rule(totalIncome, expenses);
+  renderFinancialInsights(totalIncome, totalExpense, topCat, topCatAmt);
 }
 
-async function sendApiConsoleRequest() {
-  const method = document.getElementById('apiMethodSelect').value;
-  const endpoint = document.getElementById('apiEndpointSelect').value;
-  const payloadText = document.getElementById('apiPayloadText').value;
-  const inspector = document.getElementById('apiResponseInspector');
-  const statusBadge = document.getElementById('apiStatusBadge');
-  const latencyBadge = document.getElementById('apiLatencyBadge');
+// Monthly Inflow vs Outflow Historical Canvas Renderer
+function renderMonthlyTrendChart() {
+  const canvas = document.getElementById('monthlyTrendChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
 
-  inspector.innerText = '// Sending request to backend...';
-  const startTime = performance.now();
+  // Handle high-DPI
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const width = rect.width || 800;
+  const height = 260;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
 
-  try {
-    const options = {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${state.jwtToken}`
+  ctx.clearRect(0, 0, width, height);
+
+  // Group by Month (Last 6 Months)
+  const monthMap = {};
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  // Seed past 6 months
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`;
+    monthMap[key] = { label, income: 0, expense: 0 };
+  }
+
+  state.transactions.forEach(t => {
+    const dt = new Date(t.date || t.createdAt);
+    if (!isNaN(dt.getTime())) {
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (monthMap[key]) {
+        if (t.type === 'income') monthMap[key].income += Number(t.amount || 0);
+        else monthMap[key].expense += Number(t.amount || 0);
       }
-    };
+    }
+  });
 
-    if ((method === 'POST' || method === 'PUT') && payloadText) {
-      options.body = payloadText;
+  const monthKeys = Object.keys(monthMap);
+  const maxVal = Math.max(
+    ...monthKeys.map(k => Math.max(monthMap[k].income, monthMap[k].expense)),
+    10000
+  );
+
+  const paddingLeft = 60;
+  const paddingRight = 30;
+  const paddingTop = 20;
+  const paddingBottom = 40;
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
+
+  // Grid Lines
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+  ctx.lineWidth = 1;
+  ctx.font = '10px JetBrains Mono, monospace';
+  ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'right';
+
+  const gridSteps = 4;
+  for (let i = 0; i <= gridSteps; i++) {
+    const y = paddingTop + (chartHeight / gridSteps) * i;
+    const val = maxVal - (maxVal / gridSteps) * i;
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, y);
+    ctx.lineTo(width - paddingRight, y);
+    ctx.stroke();
+    ctx.fillText(`₹${Math.round(val / 1000)}k`, paddingLeft - 8, y + 3);
+  }
+
+  // Draw Bars
+  const groupWidth = chartWidth / monthKeys.length;
+  const barWidth = Math.min(28, (groupWidth - 24) / 2);
+
+  monthKeys.forEach((k, idx) => {
+    const data = monthMap[k];
+    const groupX = paddingLeft + idx * groupWidth + groupWidth / 2;
+
+    const incomeHeight = (data.income / maxVal) * chartHeight;
+    const expenseHeight = (data.expense / maxVal) * chartHeight;
+
+    const incomeX = groupX - barWidth - 3;
+    const expenseX = groupX + 3;
+
+    // Income Bar (Emerald Gradient)
+    if (incomeHeight > 0) {
+      const gradInc = ctx.createLinearGradient(0, paddingTop + chartHeight - incomeHeight, 0, paddingTop + chartHeight);
+      gradInc.addColorStop(0, '#34d399');
+      gradInc.addColorStop(1, '#059669');
+      ctx.fillStyle = gradInc;
+      ctx.beginPath();
+      ctx.roundRect(incomeX, paddingTop + chartHeight - incomeHeight, barWidth, incomeHeight, [4, 4, 0, 0]);
+      ctx.fill();
     }
 
-    const res = await fetch(`${state.apiBase}${endpoint.replace('/api', '')}`, options);
-    const endTime = performance.now();
-    const latency = Math.round(endTime - startTime);
+    // Expense Bar (Rose Gradient)
+    if (expenseHeight > 0) {
+      const gradExp = ctx.createLinearGradient(0, paddingTop + chartHeight - expenseHeight, 0, paddingTop + chartHeight);
+      gradExp.addColorStop(0, '#fb7185');
+      gradExp.addColorStop(1, '#e11d48');
+      ctx.fillStyle = gradExp;
+      ctx.beginPath();
+      ctx.roundRect(expenseX, paddingTop + chartHeight - expenseHeight, barWidth, expenseHeight, [4, 4, 0, 0]);
+      ctx.fill();
+    }
 
-    statusBadge.innerText = `${res.status} ${res.statusText}`;
-    statusBadge.className = res.ok ? 'badge primary' : 'badge';
-    latencyBadge.innerText = `${latency}ms`;
+    // Month Label
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px Plus Jakarta Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(data.label, groupX, height - 12);
+  });
+}
 
-    const data = await res.json();
-    inspector.innerText = JSON.stringify(data, null, 2);
-  } catch (err) {
-    const latency = Math.round(performance.now() - startTime);
-    statusBadge.innerText = 'Sandbox Mock 200';
-    statusBadge.className = 'badge primary';
-    latencyBadge.innerText = `${latency}ms`;
+// 50/30/20 Financial Budget Rule Analysis
+function render50_30_20Rule(totalIncome, expenses) {
+  const needsCategories = ['Food', 'Housing', 'Utilities', 'Healthcare', 'Education'];
+  const wantsCategories = ['Entertainment', 'Shopping', 'Travel', 'Other'];
 
-    // Simulated response if offline
-    let mockResp = { success: true, timestamp: new Date().toISOString(), simulated: true };
-    if (endpoint.includes('summary')) {
-      mockResp.summary = {
-        totalIncome: 97500,
-        totalExpense: 33799,
-        balance: 63701,
-        savingsRate: 65.3
-      };
-    } else if (endpoint.includes('health')) {
-      mockResp.status = 'operational';
-      mockResp.database = 'Connected (Sandbox)';
+  let needsTotal = 0;
+  let wantsTotal = 0;
+
+  expenses.forEach(t => {
+    const cat = t.category || 'Other';
+    if (needsCategories.includes(cat)) {
+      needsTotal += Number(t.amount || 0);
     } else {
-      mockResp.count = state.transactions.length;
-      mockResp.data = state.transactions.slice(0, 3);
+      wantsTotal += Number(t.amount || 0);
     }
-    inspector.innerText = JSON.stringify(mockResp, null, 2);
+  });
+
+  const baseDenominator = totalIncome > 0 ? totalIncome : (needsTotal + wantsTotal || 1);
+  const savingsAmount = Math.max(0, totalIncome - (needsTotal + wantsTotal));
+
+  const needsPct = Math.min(100, Math.round((needsTotal / baseDenominator) * 100));
+  const wantsPct = Math.min(100, Math.round((wantsTotal / baseDenominator) * 100));
+  const savingsPct = totalIncome > 0 ? Math.min(100, Math.round((savingsAmount / totalIncome) * 100)) : 0;
+
+  const ruleNeedsPctEl = document.getElementById('ruleNeedsPct');
+  const ruleNeedsBarEl = document.getElementById('ruleNeedsBar');
+  const ruleWantsPctEl = document.getElementById('ruleWantsPct');
+  const ruleWantsBarEl = document.getElementById('ruleWantsBar');
+  const ruleSavingsPctEl = document.getElementById('ruleSavingsPct');
+  const ruleSavingsBarEl = document.getElementById('ruleSavingsBar');
+
+  if (ruleNeedsPctEl) ruleNeedsPctEl.innerText = `${needsPct}% (${formatCurrency(needsTotal)})`;
+  if (ruleNeedsBarEl) {
+    ruleNeedsBarEl.style.width = `${needsPct}%`;
+    ruleNeedsBarEl.style.background = needsPct > 50 ? '#fb7185' : '#38bdf8';
+  }
+
+  if (ruleWantsPctEl) ruleWantsPctEl.innerText = `${wantsPct}% (${formatCurrency(wantsTotal)})`;
+  if (ruleWantsBarEl) {
+    ruleWantsBarEl.style.width = `${wantsPct}%`;
+    ruleWantsBarEl.style.background = wantsPct > 30 ? '#fb7185' : '#f59e0b';
+  }
+
+  if (ruleSavingsPctEl) ruleSavingsPctEl.innerText = `${savingsPct}% (${formatCurrency(savingsAmount)})`;
+  if (ruleSavingsBarEl) {
+    ruleSavingsBarEl.style.width = `${savingsPct}%`;
+    ruleSavingsBarEl.style.background = savingsPct >= 20 ? '#10b981' : '#f59e0b';
   }
 }
 
-// --- MILESTONE 4: MIDDLEWARE INTERCEPTION SIMULATOR ---
-function simulateMiddlewareFlow(scenario) {
-  const nodeReq = document.getElementById('nodeRequest');
-  const nodeLog = document.getElementById('nodeLogger');
-  const nodeAuth = document.getElementById('nodeAuth');
-  const nodeCtrl = document.getElementById('nodeController');
-  const nodeErr = document.getElementById('nodeError');
-  const nodeRes = document.getElementById('nodeResponse');
-  const statusSub = document.getElementById('nodeResponseStatus');
-  const exp = document.getElementById('pipelineExplanation');
+// AI & Smart Financial Diagnostics Generator
+function renderFinancialInsights(totalIncome, totalExpense, topCat, topCatAmt) {
+  const container = document.getElementById('financialInsightsContainer');
+  if (!container) return;
 
-  // Reset node classes
-  [nodeReq, nodeLog, nodeAuth, nodeCtrl, nodeErr, nodeRes].forEach(n => {
-    n.classList.remove('active-pass', 'active-fail');
-  });
+  const insights = [];
+  const netSavings = totalIncome - totalExpense;
+  const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
 
-  if (scenario === 'success') {
-    nodeReq.classList.add('active-pass');
-    nodeLog.classList.add('active-pass');
-    nodeAuth.classList.add('active-pass');
-    nodeCtrl.classList.add('active-pass');
-    nodeRes.classList.add('active-pass');
-    statusSub.innerText = '200 OK JSON';
-    exp.innerHTML = '<strong>Standard Request Flow:</strong> <code>loggerMiddleware</code> logs HTTP hit → <code>authMiddleware</code> verifies Bearer JWT → <code>expenseController</code> handles query → dispatches HTTP 200 OK.';
-  } else if (scenario === 'no_token') {
-    nodeReq.classList.add('active-pass');
-    nodeLog.classList.add('active-pass');
-    nodeAuth.classList.add('active-fail');
-    nodeRes.classList.add('active-fail');
-    statusSub.innerText = '401 Unauthorized';
-    exp.innerHTML = '<strong>Authentication Guard Interception:</strong> Missing Bearer token in <code>Authorization</code> header! <code>authMiddleware</code> immediately short-circuits execution and returns <code>401 Unauthorized</code>.';
-  } else if (scenario === 'validation_error') {
-    nodeReq.classList.add('active-pass');
-    nodeLog.classList.add('active-pass');
-    nodeAuth.classList.add('active-pass');
-    nodeCtrl.classList.add('active-fail');
-    nodeRes.classList.add('active-fail');
-    statusSub.innerText = '400 Bad Request';
-    exp.innerHTML = '<strong>Validation Error:</strong> Missing required fields (title, amount, or category). Controller stops pipeline and returns <code>400 Bad Request</code>.';
-  } else if (scenario === 'server_crash') {
-    nodeReq.classList.add('active-pass');
-    nodeLog.classList.add('active-pass');
-    nodeAuth.classList.add('active-pass');
-    nodeCtrl.classList.add('active-fail');
-    nodeErr.classList.add('active-fail');
-    nodeRes.classList.add('active-fail');
-    statusSub.innerText = '500 Internal Error';
-    exp.innerHTML = '<strong>Centralized Error Interceptor:</strong> Unexpected database or runtime exception triggered! Caught by <code>errorMiddleware.js</code>, stack trace logged to console, and uniform 500 JSON dispatched without crashing Node process.';
+  // 1. Savings Rate Assessment
+  if (totalIncome === 0 && totalExpense === 0) {
+    insights.push({
+      type: 'warning',
+      icon: '💡',
+      title: 'Ready for Transaction Intake',
+      desc: 'Record your monthly salary income and living expenses to generate tailored cash flow diagnostics.'
+    });
+  } else if (netSavings < 0) {
+    insights.push({
+      type: 'danger',
+      icon: '🚨',
+      title: 'Deficit Warning: Outflow Exceeds Inflow',
+      desc: `You are running a net monthly deficit of ${formatCurrency(Math.abs(netSavings))}. Prioritize trimming non-essential discretionary expenses.`
+    });
+  } else if (savingsRate >= 30) {
+    insights.push({
+      type: 'positive',
+      icon: '💎',
+      title: 'Exceptional Capital Accumulation',
+      desc: `Outstanding savings rate of ${savingsRate.toFixed(1)}%! Consider deploying this surplus into systematic wealth generation instruments (SIPs/Index Funds).`
+    });
+  } else if (savingsRate >= 20) {
+    insights.push({
+      type: 'positive',
+      icon: '✅',
+      title: 'Optimal 50/30/20 Savings Compliance',
+      desc: `Your savings rate is healthy at ${savingsRate.toFixed(1)}%. You are meeting the baseline target for financial stability.`
+    });
+  } else {
+    insights.push({
+      type: 'warning',
+      icon: '⚠️',
+      title: 'Sub-Optimal Savings Rate',
+      desc: `Your savings rate of ${savingsRate.toFixed(1)}% is below the recommended 20% benchmark. Review high-expenditure categories.`
+    });
   }
-}
 
-// --- MILESTONE 5: DATABASE SCHEMA & BSON GENERATOR ---
-function generateSampleBSON() {
-  const inspector = document.getElementById('sampleBSONInspector');
-  const sample = {
-    _id: "ObjectId('673f" + Math.floor(Math.random() * 1000000000).toString(16) + "')",
-    title: "Metro Transit Smart Card",
-    amount: 1500,
-    category: "Travel",
-    type: "expense",
-    date: new Date().toISOString(),
-    description: "Periodic metro card auto-refill",
-    user: "ObjectId('673f8e91a03e1b0021c3b12a')",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    __v: 0
-  };
-  inspector.innerText = JSON.stringify(sample, null, 2);
-}
+  // 2. Category Concentration Check
+  if (totalExpense > 0 && topCat !== 'None') {
+    const topPct = (topCatAmt / totalExpense) * 100;
+    if (topPct >= 40) {
+      insights.push({
+        type: 'warning',
+        icon: '📊',
+        title: `Heavy Concentration in ${topCat}`,
+        desc: `${topCat} accounts for ${topPct.toFixed(1)}% (${formatCurrency(topCatAmt)}) of your total spending. Setting a category budget limit is recommended.`
+      });
+    }
+  }
 
-// --- MILESTONE 6: QUERY BUILDER TEST ---
-function runQueryBuilderTest() {
-  const cat = document.getElementById('qbCategory').value;
-  const type = document.getElementById('qbType').value;
-  const sort = document.getElementById('qbSort').value;
-  const displayUrl = document.getElementById('synthesizedQueryUrl');
-  const tbody = document.getElementById('qbResultsTableBody');
-
-  const params = [];
-  if (cat) params.push(`category=${cat}`);
-  if (type) params.push(`type=${type}`);
-  if (sort) params.push(`sort=${sort}`);
-
-  const queryString = params.length > 0 ? `?${params.join('&')}` : '';
-  displayUrl.innerText = `GET /api/expenses${queryString}`;
-
-  // Filter local preview
-  let results = state.transactions.filter(t => {
-    const matchCat = !cat || (t.category && t.category.toLowerCase() === cat.toLowerCase());
-    const matchType = !type || t.type === type;
-    return matchCat && matchType;
+  // 3. Liquidity Cushion Advice
+  insights.push({
+    type: 'positive',
+    icon: '🛡️',
+    title: 'Emergency Cushion Target',
+    desc: `Maintain a 3 to 6-month buffer (${formatCurrency(totalExpense * 3)} - ${formatCurrency(totalExpense * 6)}) in liquid reserves before committing to long-term locks.`
   });
 
-  results.sort((a, b) => {
-    if (sort === 'date_desc') return new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt);
-    if (sort === 'date_asc') return new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt);
-    if (sort === 'amount_desc') return b.amount - a.amount;
-    if (sort === 'amount_asc') return a.amount - b.amount;
-    return 0;
-  });
-
-  tbody.innerHTML = results.slice(0, 4).map(r => `
-    <tr>
-      <td>${escapeHTML(r.title)}</td>
-      <td>${escapeHTML(r.category)}</td>
-      <td><span class="badge-type ${r.type}">${r.type}</span></td>
-      <td>${formatCurrency(r.amount)}</td>
-      <td>${formatDate(r.date || r.createdAt)}</td>
-    </tr>
+  container.innerHTML = insights.map(i => `
+    <div class="insight-card ${i.type}">
+      <div class="insight-icon">${i.icon}</div>
+      <div>
+        <div class="insight-title">${i.title}</div>
+        <div class="insight-desc">${i.desc}</div>
+      </div>
+    </div>
   `).join('');
 }
 
-// --- MILESTONE 7: BCRYPT & JWT LAB ---
-function simulateBcryptHash() {
-  const pwd = document.getElementById('bcryptInput').value || 'SecurePassword123';
-  const rounds = document.getElementById('bcryptSaltRounds').value || 10;
-  const hashBox = document.getElementById('bcryptHashDisplay');
-  const breakdown = document.getElementById('bcryptBreakdown');
+// ========================================================
+// TAB 3: CATEGORY BUDGET PLANNER ENGINE
+// ========================================================
+function renderBudgetPlanner() {
+  const grid = document.getElementById('budgetCategoryCardsGrid');
+  if (!grid) return;
 
-  // Pseudo-random salt generator for demonstration
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789./';
-  let salt = '';
-  for (let i = 0; i < 22; i++) salt += chars.charAt(Math.floor(Math.random() * chars.length));
+  const expenses = state.transactions.filter(t => t.type === 'expense');
+  const catSpent = {};
+  expenses.forEach(t => {
+    const cat = t.category || 'Other';
+    catSpent[cat] = (catSpent[cat] || 0) + Number(t.amount || 0);
+  });
 
-  let cipher = '';
-  for (let i = 0; i < 31; i++) cipher += chars.charAt(Math.floor(Math.random() * chars.length));
+  let totalBudget = 0;
+  let totalSpentInBudgets = 0;
 
-  const fullHash = `$2a$${rounds}$${salt}${cipher}`;
-  hashBox.innerText = fullHash;
+  const categories = Object.keys(state.budgets);
 
-  breakdown.innerHTML = `
-    <span class="hb-part hb-algo">$2a$</span>
-    <span class="hb-part hb-cost">${rounds}$</span>
-    <span class="hb-part hb-salt">${salt}</span>
-    <span class="hb-part hb-cipher">${cipher}</span>
-  `;
+  grid.innerHTML = categories.map(cat => {
+    const budgetCap = Number(state.budgets[cat]) || 0;
+    const spent = Number(catSpent[cat]) || 0;
+    totalBudget += budgetCap;
+    totalSpentInBudgets += spent;
 
-  document.getElementById('bcryptCompareResult').innerText = 'Ready to verify candidate against active hash';
-  document.getElementById('bcryptCompareResult').className = 'compare-result';
-}
+    const usagePct = budgetCap > 0 ? (spent / budgetCap) * 100 : (spent > 0 ? 100 : 0);
+    const clampedPct = Math.min(100, usagePct);
+    const remaining = Math.max(0, budgetCap - spent);
 
-function simulateBcryptCompare() {
-  const original = document.getElementById('bcryptInput').value;
-  const candidate = document.getElementById('bcryptCompareInput').value;
-  const resultBox = document.getElementById('bcryptCompareResult');
+    let statusClass = 'safe';
+    let statusText = 'On Track';
+    let barColor = '#10b981';
 
-  if (original === candidate) {
-    resultBox.className = 'compare-result match';
-    resultBox.innerHTML = '✔ <code>bcrypt.compare()</code> MATCH! Password hashes correlate correctly.';
-  } else {
-    resultBox.className = 'compare-result mismatch';
-    resultBox.innerHTML = '✖ <code>bcrypt.compare()</code> MISMATCH! Invalid credentials supplied.';
+    if (usagePct > 100) {
+      statusClass = 'danger';
+      statusText = `Over by ${formatCurrency(spent - budgetCap)}`;
+      barColor = '#f43f5e';
+    } else if (usagePct >= 80) {
+      statusClass = 'warning';
+      statusText = 'Approaching Limit';
+      barColor = '#f59e0b';
+    }
+
+    const catColor = state.categoryColors[cat] || '#38bdf8';
+
+    return `
+      <div class="budget-card">
+        <div class="budget-card-header">
+          <div class="budget-card-title">
+            <span class="legend-color-dot" style="background: ${catColor}; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+            <span>${escapeHTML(cat)}</span>
+          </div>
+          <span class="budget-status-pill ${statusClass}">${statusText}</span>
+        </div>
+
+        <div class="budget-amounts">
+          <div>
+            <div class="budget-spent-val">${formatCurrency(spent)}</div>
+            <div class="budget-cap-val">of ${formatCurrency(budgetCap)} cap</div>
+          </div>
+          <strong style="font-size: 0.95rem; font-family: 'JetBrains Mono', monospace; color: ${barColor}">${usagePct.toFixed(0)}%</strong>
+        </div>
+
+        <div class="budget-progress-bg">
+          <div class="budget-progress-bar" style="width: ${clampedPct}%; background: ${barColor};"></div>
+        </div>
+
+        <div class="budget-footer-info">
+          <span>Remaining: <strong>${formatCurrency(remaining)}</strong></span>
+          <span>Target Cap: ${formatCurrency(budgetCap)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Update Summary Metrics
+  const totalBudgetEl = document.getElementById('totalBudgetDisplay');
+  const budgetSpentEl = document.getElementById('budgetSpentDisplay');
+  const budgetUsagePctEl = document.getElementById('budgetUsagePctDisplay');
+  const budgetRemainingEl = document.getElementById('budgetRemainingDisplay');
+  const budgetHealthBadge = document.getElementById('budgetHealthBadge');
+
+  if (totalBudgetEl) totalBudgetEl.innerText = formatCurrency(totalBudget);
+  if (budgetSpentEl) budgetSpentEl.innerText = formatCurrency(totalSpentInBudgets);
+  
+  const overallUsagePct = totalBudget > 0 ? ((totalSpentInBudgets / totalBudget) * 100).toFixed(1) : 0;
+  if (budgetUsagePctEl) budgetUsagePctEl.innerText = `${overallUsagePct}% of aggregate limits consumed`;
+
+  const remainingSafe = Math.max(0, totalBudget - totalSpentInBudgets);
+  if (budgetRemainingEl) budgetRemainingEl.innerText = formatCurrency(remainingSafe);
+
+  if (budgetHealthBadge) {
+    if (totalSpentInBudgets > totalBudget) {
+      budgetHealthBadge.className = 'trend-pill';
+      budgetHealthBadge.style.background = 'rgba(244, 63, 94, 0.15)';
+      budgetHealthBadge.style.color = '#fb7185';
+      budgetHealthBadge.innerText = 'Budget Exceeded';
+    } else {
+      budgetHealthBadge.className = 'trend-pill positive';
+      budgetHealthBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+      budgetHealthBadge.style.color = '#34d399';
+      budgetHealthBadge.innerText = 'Within Safe Bounds';
+    }
   }
 }
 
-function updateJwtWorkshopDisplay() {
-  const jwtP1 = document.getElementById('jwtP1');
-  const jwtP2 = document.getElementById('jwtP2');
-  const jwtP3 = document.getElementById('jwtP3');
-  const payloadBox = document.getElementById('jwtPayloadDisplay');
-  const activeBearerCode = document.getElementById('activeBearerCode');
+// Open Budget Target Configuration Modal
+function openBudgetConfigModal() {
+  const modal = document.getElementById('budgetConfigModal');
+  const container = document.getElementById('budgetInputsContainer');
+  if (!modal || !container) return;
 
-  if (state.jwtToken && state.jwtToken.includes('.')) {
-    const parts = state.jwtToken.split('.');
-    if (jwtP1) jwtP1.innerText = parts[0] || 'header';
-    if (jwtP2) jwtP2.innerText = parts[1] || 'payload';
-    if (jwtP3) jwtP3.innerText = parts[2] || 'signature';
+  const defaultCategories = ['Food', 'Housing', 'Travel', 'Utilities', 'Healthcare', 'Entertainment', 'Shopping', 'Education'];
 
-    try {
-      const decodedPayload = JSON.parse(atob(parts[1]));
-      if (payloadBox) payloadBox.innerText = JSON.stringify(decodedPayload, null, 2);
-    } catch (e) {
-      if (payloadBox && state.currentUser) {
-        payloadBox.innerText = JSON.stringify({
-          id: state.currentUser.id || state.currentUser._id,
-          email: state.currentUser.email,
-          name: state.currentUser.name
-        }, null, 2);
+  container.innerHTML = defaultCategories.map(cat => {
+    const currentVal = state.budgets[cat] || 0;
+    const color = state.categoryColors[cat] || '#38bdf8';
+    return `
+      <div class="budget-config-item">
+        <label class="budget-config-label">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; display: inline-block;"></span>
+          ${cat}
+        </label>
+        <input type="number" name="budget_${cat}" class="form-input budget-config-input" value="${currentVal}" min="0" step="500" required>
+      </div>
+    `;
+  }).join('');
+
+  modal.classList.add('active');
+}
+
+// Close Budget Modal
+function closeBudgetConfigModal() {
+  const modal = document.getElementById('budgetConfigModal');
+  if (modal) modal.classList.remove('active');
+}
+
+// Handle Saving Budget Caps
+function handleSaveBudgetConfig(event) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+
+  const updatedBudgets = {};
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith('budget_')) {
+      const cat = key.replace('budget_', '');
+      updatedBudgets[cat] = Math.max(0, Number(value) || 0);
+    }
+  }
+
+  state.budgets = updatedBudgets;
+  localStorage.setItem('expense_tracker_budgets', JSON.stringify(state.budgets));
+  renderBudgetPlanner();
+  closeBudgetConfigModal();
+  showToast('Category budget limits saved successfully', 'success');
+}
+
+// ========================================================
+// TAB 4: FINANCIAL COMPUTATION & WEALTH CALCULATORS
+// ========================================================
+function initCalculators() {
+  calculateEMI();
+  calculateSIP();
+  calculateEmergencyFund();
+  calculateTax();
+}
+
+// 1. Loan EMI Calculator
+function calculateEMI() {
+  const pInput = document.getElementById('emiPrincipal');
+  const rInput = document.getElementById('emiRate');
+  const tInput = document.getElementById('emiTenure');
+
+  if (!pInput || !rInput || !tInput) return;
+
+  const principal = parseFloat(pInput.value) || 0;
+  const annualRate = parseFloat(rInput.value) || 0;
+  const years = parseFloat(tInput.value) || 0;
+
+  if (principal <= 0 || annualRate <= 0 || years <= 0) {
+    document.getElementById('emiResultMonthly').innerText = '₹0';
+    document.getElementById('emiResultInterest').innerText = '₹0';
+    document.getElementById('emiResultTotal').innerText = '₹0';
+    return;
+  }
+
+  const monthlyRate = annualRate / (12 * 100);
+  const totalMonths = years * 12;
+
+  // EMI formula: P * r * (1+r)^n / ((1+r)^n - 1)
+  const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
+  const totalPayment = emi * totalMonths;
+  const totalInterest = totalPayment - principal;
+
+  document.getElementById('emiResultMonthly').innerText = formatCurrency(Math.round(emi));
+  document.getElementById('emiResultInterest').innerText = formatCurrency(Math.round(totalInterest));
+  document.getElementById('emiResultTotal').innerText = formatCurrency(Math.round(totalPayment));
+}
+
+// 2. SIP & Wealth Projector
+function calculateSIP() {
+  const pInput = document.getElementById('sipAmount');
+  const rInput = document.getElementById('sipRate');
+  const yInput = document.getElementById('sipYears');
+
+  if (!pInput || !rInput || !yInput) return;
+
+  const monthlyInvestment = parseFloat(pInput.value) || 0;
+  const annualRate = parseFloat(rInput.value) || 0;
+  const years = parseFloat(yInput.value) || 0;
+
+  if (monthlyInvestment <= 0 || annualRate <= 0 || years <= 0) {
+    document.getElementById('sipResultInvested').innerText = '₹0';
+    document.getElementById('sipResultGains').innerText = '₹0';
+    document.getElementById('sipResultTotal').innerText = '₹0';
+    return;
+  }
+
+  const i = annualRate / (12 * 100);
+  const n = years * 12;
+
+  // SIP formula: P * ((1 + i)^n - 1) / i * (1 + i)
+  const futureValue = monthlyInvestment * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);
+  const totalInvested = monthlyInvestment * n;
+  const wealthGained = futureValue - totalInvested;
+
+  document.getElementById('sipResultInvested').innerText = formatCurrency(Math.round(totalInvested));
+  document.getElementById('sipResultGains').innerText = `+ ${formatCurrency(Math.round(wealthGained))}`;
+  document.getElementById('sipResultTotal').innerText = formatCurrency(Math.round(futureValue));
+}
+
+// 3. Emergency Fund Readiness
+function calculateEmergencyFund() {
+  const expenses = state.transactions.filter(t => t.type === 'expense');
+  const incomes = state.transactions.filter(t => t.type === 'income');
+
+  const totalExpense = expenses.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const totalIncome = incomes.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const currentBalance = totalIncome - totalExpense;
+
+  const uniqueMonths = new Set(expenses.map(t => (t.date || t.createdAt || '').substring(0, 7)));
+  const monthCount = Math.max(1, uniqueMonths.size);
+  const avgMonthlyBurn = totalExpense / monthCount || 30000;
+
+  const target3Mo = avgMonthlyBurn * 3;
+  const target6Mo = avgMonthlyBurn * 6;
+
+  const burnEl = document.getElementById('efMonthlyBurn');
+  const target3El = document.getElementById('ef3Months');
+  const target6El = document.getElementById('ef6Months');
+  const balanceEl = document.getElementById('efCurrentBalance');
+  const coveragePctEl = document.getElementById('efCoveragePct');
+  const progressBar = document.getElementById('efProgressBar');
+  const adviceEl = document.getElementById('efStatusAdvice');
+
+  if (burnEl) burnEl.innerText = formatCurrency(avgMonthlyBurn);
+  if (target3El) target3El.innerText = formatCurrency(target3Mo);
+  if (target6El) target6El.innerText = formatCurrency(target6Mo);
+  if (balanceEl) balanceEl.innerText = formatCurrency(currentBalance);
+
+  const coveragePct = target6Mo > 0 ? Math.min(100, Math.max(0, Math.round((currentBalance / target6Mo) * 100))) : 0;
+  if (coveragePctEl) coveragePctEl.innerText = `${coveragePct}%`;
+  if (progressBar) {
+    progressBar.style.width = `${coveragePct}%`;
+    progressBar.style.background = coveragePct >= 100 ? '#10b981' : (coveragePct >= 50 ? '#38bdf8' : '#f59e0b');
+  }
+
+  if (adviceEl) {
+    if (currentBalance >= target6Mo) {
+      adviceEl.innerHTML = '🛡️ <strong>Optimal Fortress Cushion:</strong> You have full 6+ months of living coverage in reserve!';
+    } else if (currentBalance >= target3Mo) {
+      adviceEl.innerHTML = '⚡ <strong>Moderate Runway:</strong> You have 3+ months covered. Aim to expand to 6 months.';
+    } else {
+      adviceEl.innerHTML = '⚠️ <strong>Build Cushion:</strong> Prioritize saving to reach minimum 3-month safety reserves.';
+    }
+  }
+}
+
+// 4. Fast Income Tax Estimator (FY 2024-25 New Regime)
+function calculateTax() {
+  const grossInput = document.getElementById('taxGrossIncome');
+  if (!grossInput) return;
+
+  const grossIncome = parseFloat(grossInput.value) || 0;
+  const standardDeduction = 75000;
+  const taxableIncome = Math.max(0, grossIncome - standardDeduction);
+
+  let tax = 0;
+
+  if (taxableIncome <= 300000) {
+    tax = 0;
+  } else if (taxableIncome <= 700000) {
+    // 3L - 7L @ 5% (Eligible for 87A rebate if total income <= 7L)
+    tax = (taxableIncome - 300000) * 0.05;
+    if (taxableIncome <= 700000) tax = 0; // Section 87A rebate
+  } else {
+    // Bracket calculations for > 7L
+    tax += (700000 - 300000) * 0.05; // 20,000
+    if (taxableIncome <= 1000000) {
+      tax += (taxableIncome - 700000) * 0.10;
+    } else {
+      tax += (1000000 - 700000) * 0.10; // 30,000
+      if (taxableIncome <= 1200000) {
+        tax += (taxableIncome - 1000000) * 0.15;
+      } else {
+        tax += (1200000 - 1000000) * 0.15; // 30,000
+        if (taxableIncome <= 1500000) {
+          tax += (taxableIncome - 1200000) * 0.20;
+        } else {
+          tax += (1500000 - 1200000) * 0.20; // 60,000
+          tax += (taxableIncome - 1500000) * 0.30;
+        }
       }
     }
-
-    if (activeBearerCode) {
-      activeBearerCode.innerText = `Authorization: Bearer ${state.jwtToken.substring(0, 24)}...`;
-    }
-  } else {
-    // Default preview placeholder
-    const sampleP1 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
-    const samplePayload = {
-      id: state.currentUser ? (state.currentUser.id || state.currentUser._id) : 'guest_session',
-      email: state.currentUser ? state.currentUser.email : 'guest@example.com',
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 604800
-    };
-    const sampleP2 = btoa(JSON.stringify(samplePayload)).replace(/=/g, '');
-    const sampleP3 = 'LIVE_BACKEND_SIGNED_JWT';
-
-    if (jwtP1) jwtP1.innerText = sampleP1;
-    if (jwtP2) jwtP2.innerText = sampleP2;
-    if (jwtP3) jwtP3.innerText = sampleP3;
-    if (payloadBox) payloadBox.innerText = JSON.stringify(samplePayload, null, 2);
-    if (activeBearerCode) activeBearerCode.innerText = 'Authorization: Bearer <sign-in-to-generate>';
   }
-}
 
-function regenerateJwtDemo() {
-  if (state.jwtToken) {
-    updateJwtWorkshopDisplay();
-    showToast('Active session JWT visualizer updated', 'success');
-  } else {
-    showToast('Please sign in or register to acquire a live server token', 'info');
-    openAuthModal('login');
-  }
+  // 4% Health & Education Cess
+  const cess = tax * 0.04;
+  const totalTax = tax + cess;
+  const effectiveRate = grossIncome > 0 ? ((totalTax / grossIncome) * 100).toFixed(1) : 0;
+
+  document.getElementById('taxableIncomeResult').innerText = formatCurrency(taxableIncome);
+  document.getElementById('taxPayableResult').innerText = formatCurrency(Math.round(totalTax));
+  document.getElementById('taxEffectiveRate').innerText = `${effectiveRate}%`;
 }
 
 function copyJwtToClipboard() {
@@ -1380,96 +1600,6 @@ function copyJwtToClipboard() {
   showToast('Bearer token copied to clipboard', 'success');
 }
 
-// --- TAB 3: TECHNICAL DOSSIER LOADERS ---
-function loadDocSection(sectionId) {
-  document.querySelectorAll('.doc-link').forEach(btn => btn.classList.remove('active'));
-  event.target.classList.add('active');
-
-  document.querySelectorAll('.doc-content-section').forEach(sec => sec.classList.remove('active'));
-  const target = document.getElementById(sectionId);
-  if (!target) return;
-
-  if (sectionId === 'doc-requirements' && target.innerHTML.trim() === '') {
-    target.innerHTML = `
-      <h1>Software Requirements Specification (SRS)</h1>
-      <p class="lead">Personal Expense Tracker — Engineering Requirements & Objectives</p>
-      <hr class="doc-divider">
-      <h3>1. System Objectives</h3>
-      <p>Deliver sub-second transaction tracking, multi-parameter querying, and cloud-persisted financial analytics protected by cryptographic identity isolation.</p>
-      <h3>2. Functional Requirements</h3>
-      <ul>
-        <li><strong>FR-01:</strong> User Registration and Bcrypt salted password hashing (10 rounds).</li>
-        <li><strong>FR-02:</strong> JWT Token issuance and Bearer authorization middleware.</li>
-        <li><strong>FR-03:</strong> Full CRUD API endpoints for expenses and incomes.</li>
-        <li><strong>FR-04:</strong> Dynamic query engine supporting category, date range, and text search.</li>
-        <li><strong>FR-05:</strong> Aggregated financial calculations for balance, total expense, total income, and savings rate.</li>
-      </ul>
-      <h3>3. Non-Functional Requirements</h3>
-      <ul>
-        <li><strong>Performance:</strong> Sub-100ms response time on all standard CRUD endpoints.</li>
-        <li><strong>Security:</strong> Secrets decoupled via .env; passwords never stored or returned in plain text.</li>
-        <li><strong>Reliability:</strong> MongoDB Atlas cloud cluster replication; centralized error middleware.</li>
-      </ul>
-    `;
-  } else if (sectionId === 'doc-db' && target.innerHTML.trim() === '') {
-    target.innerHTML = `
-      <h1>Database Design & Schema Architecture</h1>
-      <p class="lead">MongoDB Atlas Distributed NoSQL Schema Modeling with Mongoose ODM</p>
-      <hr class="doc-divider">
-      <h3>Entity Relationship Overview</h3>
-      <pre class="json-inspector">
-+---------------------+              +-----------------------+
-|        USER         |              |        EXPENSE        |
-+---------------------+              +-----------------------+
-| _id       : ObjectId| 1          * | _id         : ObjectId|
-| name      : String  |------------->| title       : String  |
-| email     : String  | (1-to-Many)  | amount      : Number  |
-| password  : String  |              | category    : String  |
-| createdAt : Date    |              | type        : String  |
-+---------------------+              | date        : Date    |
-                                     | user        : ObjectId|
-                                     +-----------------------+
-      </pre>
-      <h3>Index Optimization</h3>
-      <ul>
-        <li><code>users.email</code>: Unique B-Tree index for rapid authentication lookups.</li>
-        <li><code>expenses.category + date</code>: Compound index to accelerate analytics queries.</li>
-      </ul>
-    `;
-  } else if (sectionId === 'doc-api' && target.innerHTML.trim() === '') {
-    target.innerHTML = `
-      <h1>RESTful API Specification</h1>
-      <p class="lead">Standard HTTP Endpoints, Payload Schemas, and Response Formats</p>
-      <hr class="doc-divider">
-      <h3>Endpoints Overview</h3>
-      <ul>
-        <li><code>POST /api/users/register</code> — Register new user account</li>
-        <li><code>POST /api/users/login</code> — Authenticate and receive JWT Bearer token</li>
-        <li><code>GET /api/users/profile</code> — Retrieve authenticated user profile (Protected)</li>
-        <li><code>GET /api/expenses</code> — Query and filter financial records</li>
-        <li><code>GET /api/expenses/summary</code> — Aggregate balance, total income, total expense</li>
-        <li><code>POST /api/expenses</code> — Create a new financial transaction</li>
-        <li><code>PUT /api/expenses/:id</code> — Update an existing transaction</li>
-        <li><code>DELETE /api/expenses/:id</code> — Remove a transaction by identifier</li>
-      </ul>
-    `;
-  } else if (sectionId === 'doc-testing' && target.innerHTML.trim() === '') {
-    target.innerHTML = `
-      <h1>Quality Assurance & Testing Report</h1>
-      <p class="lead">Verification Results, Execution Traces, and Security Audits</p>
-      <hr class="doc-divider">
-      <h3>Test Execution Highlights</h3>
-      <ul>
-        <li><strong>Event Loop Verification:</strong> <code>eventloop.js</code> executed Call Stack → Microtasks (Promises) → Macrotasks (Timers) in expected sequence.</li>
-        <li><strong>Middleware Verification:</strong> Custom logger middleware records all request routes; error interceptor handles uncaught exceptions.</li>
-        <li><strong>CRUD Verification:</strong> 201 Created and 200 OK verified across all transactional endpoints.</li>
-        <li><strong>Cryptographic Security:</strong> Bcrypt salted hashes verified; JWT signature rejection tested.</li>
-      </ul>
-    `;
-  }
-
-  target.classList.add('active');
-}
 
 // Toast Notifications
 function showToast(msg, type = 'info') {
