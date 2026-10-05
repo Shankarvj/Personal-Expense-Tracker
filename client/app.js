@@ -383,17 +383,21 @@ function logoutUser() {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_user');
 
-  // Close profile modal if open
+  // Close profile and auth modals if open
   const profileModal = document.getElementById('userProfileModal');
   if (profileModal) profileModal.classList.remove('active');
+  const authModal = document.getElementById('authModal');
+  if (authModal) authModal.classList.remove('active');
 
   updateAuthUI();
   updateMetrics();
   renderLedgerTable();
   renderCharts();
+  renderAnalyticsView();
+  renderBudgetPlanner();
+  calculateEmergencyFund();
 
-  showToast('You have been signed out.', 'success');
-  openAuthModal('login');
+  showToast('You have been signed out successfully.', 'info');
 }
 
 // Check Backend Connectivity
