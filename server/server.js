@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const helmet = require("helmet");
 const connectDB = require("./config/db");
 
 dotenv.config();
@@ -11,9 +12,27 @@ connectDB();
 
 const app = express();
 
+// Security Headers Middleware (Helmet - Week 8 Hardening)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'", "http://localhost:5000", "https://*"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
 // Middleware Imports
 const loggerMiddleware = require("./middleware/loggerMiddleware");
 const errorMiddleware = require("./middleware/errorMiddleware");
+const { apiLimiter } = require("./middleware/rateLimitMiddleware");
 
 // CORS Middleware (Enables browser cross-origin requests)
 app.use((req, res, next) => {
@@ -29,12 +48,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Built-in Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Built-in Body Parsing Middleware (With payload size limits to prevent DoS)
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
-// Custom Logger Middleware
+// Custom Non-Blocking Logger Middleware
 app.use(loggerMiddleware);
+
+// Rate Limiter for all API routes (Week 8 Security Guard)
+app.use("/api", apiLimiter);
 
 // Serve static frontend files from 'public' directory
 app.use(express.static(path.join(__dirname, "public")));
@@ -62,6 +84,11 @@ app.get("/api/health", (req, res) => {
     database: dbStatusMap[dbState] || "Unknown",
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()) + "s",
+    security: {
+      helmet: "Active (CSP & XSS protection)",
+      rateLimiter: "Active (200 req/15min API, 15 req/15min Auth)",
+      inputValidation: "RFC 5322 & Positive Numeric Sanitization Active",
+    },
   });
 });
 
@@ -69,6 +96,8 @@ app.get("/api/health", (req, res) => {
 app.get("/api", (req, res) => {
   res.status(200).json({
     message: "Personal Expense Tracker API Engine",
+    version: "1.0.0",
+    securityAudit: "Week 8 Hardened (Helmet, Rate Limiting, Input Sanitization)",
     endpoints: {
       auth: ["POST /api/users/register", "POST /api/users/login", "GET /api/users/profile"],
       expenses: [
@@ -85,8 +114,6 @@ app.get("/api", (req, res) => {
 
 // Fallback to static app or status if root requested
 app.get("/", (req, res, next) => {
-  // If static index exists in public, express.static handles it.
-  // Otherwise provide status.
   res.sendFile(path.join(__dirname, "public", "index.html"), (err) => {
     if (err) {
       res.send("Personal Expense Tracker API Running. Public frontend not loaded.");

@@ -1,5 +1,4 @@
 const express = require("express");
-
 const router = express.Router();
 
 const {
@@ -9,9 +8,17 @@ const {
 } = require("../controllers/userController");
 
 const { protect } = require("../middleware/authMiddleware");
+const { authLimiter } = require("../middleware/rateLimitMiddleware");
+const {
+  validateRegister,
+  validateLogin,
+} = require("../validations/authValidation");
 
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+// Public Authentication Endpoints (Guarded by rate limiter & input validator)
+router.post("/register", authLimiter, validateRegister, registerUser);
+router.post("/login", authLimiter, validateLogin, loginUser);
+
+// Protected Profile Endpoint
 router.get("/profile", protect, getProfile);
 
 module.exports = router;

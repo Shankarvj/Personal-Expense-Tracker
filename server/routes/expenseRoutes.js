@@ -14,13 +14,18 @@ const {
   protect,
 } = require("../middleware/authMiddleware");
 
+const {
+  validateExpenseCreate,
+  validateExpenseUpdate,
+} = require("../validations/expenseValidation");
+
 // Financial summary endpoint (placed before :id route)
 router.get("/summary", optionalAuth, getExpenseSummary);
 
-// CRUD Endpoints
+// CRUD Endpoints (Protected with optional/strict auth & payload validators)
 router.get("/", optionalAuth, getExpenses);
-router.post("/", optionalAuth, createExpense);
-router.put("/:id", optionalAuth, updateExpense);
+router.post("/", optionalAuth, validateExpenseCreate, createExpense);
+router.put("/:id", optionalAuth, validateExpenseUpdate, updateExpense);
 router.delete("/:id", optionalAuth, deleteExpense);
 
 module.exports = router;
