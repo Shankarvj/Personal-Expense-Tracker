@@ -1,0 +1,14 @@
+{
+  "name": "personal-expense-tracker",
+  "version": "1.0.0",
+  "description": "Personal Expense Tracker with Real-Time Analytics, Budget Planner, and Financial Tools Suite",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "npm --prefix server start",
+    "dev": "npm --prefix server run dev",
+    "server": "node server/server.js"
+  },
+  "keywords": ["expense-tracker", "mongodb", "express", "jwt", "analytics"],
+  "author": "Shankar G",
+  "license": "ISC"
+}
