@@ -1,50 +1,44 @@
 const Expense = require("../models/Expense");
 
-// GET ALL EXPENSES WITH ADVANCED QUERYING & FILTERING
+// GET ALL EXPENSES (Filtered by User if authenticated, supports search/category/type/sort)
 const getExpenses = async (req, res) => {
   try {
-    const { category, type, search, startDate, endDate, sort } = req.query;
+    const filter = {};
 
-    const query = {};
-
-    // Filter by User if authenticated
+    // If authenticated user is attached via auth middleware
     if (req.user && req.user.id) {
-      query.$or = [{ user: req.user.id }, { user: null }, { user: { $exists: false } }];
+      filter.user = req.user.id;
     }
 
-    // Filter by Category
-    if (category && category !== "All") {
-      query.category = { $regex: new RegExp(`^${category}$`, "i") };
+    // Category filter
+    if (req.query.category && req.query.category !== "All") {
+      filter.category = req.query.category;
     }
 
-    // Filter by Type (expense / income)
-    if (type && type !== "All") {
-      query.type = type.toLowerCase();
+    // Type filter (income / expense)
+    if (req.query.type && req.query.type !== "all") {
+      filter.type = req.query.type;
     }
 
-    // Search query on title or description
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+    // Search keyword in title or description
+    if (req.query.search) {
+      filter.$or = [
+        { title: { $regex: req.query.search, $options: "i" } },
+        { description: { $regex: req.query.search, $options: "i" } },
       ];
     }
 
-    // Date range filtering
-    if (startDate || endDate) {
-      query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate);
+    // Sorting
+    let sortOption = { date: -1, createdAt: -1 };
+    if (req.query.sort === "amount-desc") {
+      sortOption = { amount: -1 };
+    } else if (req.query.sort === "amount-asc") {
+      sortOption = { amount: 1 };
+    } else if (req.query.sort === "date-asc") {
+      sortOption = { date: 1 };
     }
 
-    // Dynamic sorting
-    let sortOptions = { date: -1, createdAt: -1 };
-    if (sort === "amount_asc") sortOptions = { amount: 1 };
-    else if (sort === "amount_desc") sortOptions = { amount: -1 };
-    else if (sort === "date_asc") sortOptions = { date: 1 };
-    else if (sort === "date_desc") sortOptions = { date: -1 };
-
-    const expenses = await Expense.find(query).sort(sortOptions);
+    const expenses = await Expense.find(filter).sort(sortOption);
 
     res.status(200).json({
       success: true,
@@ -54,20 +48,21 @@ const getExpenses = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to fetch expenses",
+      error: error.message,
     });
   }
 };
 
-// GET FINANCIAL SUMMARY & ANALYTICS
+// GET FINANCIAL SUMMARY (Income, Expense, Balance, Breakdown)
 const getExpenseSummary = async (req, res) => {
   try {
-    const query = {};
+    const filter = {};
     if (req.user && req.user.id) {
-      query.$or = [{ user: req.user.id }, { user: null }, { user: { $exists: false } }];
+      filter.user = req.user.id;
     }
 
-    const expenses = await Expense.find(query);
+    const expenses = await Expense.find(filter);
 
     let totalIncome = 0;
     let totalExpense = 0;
@@ -75,27 +70,24 @@ const getExpenseSummary = async (req, res) => {
 
     expenses.forEach((item) => {
       const amt = Number(item.amount) || 0;
-      const itemType = item.type || "expense";
-
-      if (itemType === "income") {
+      if (item.type === "income") {
         totalIncome += amt;
       } else {
         totalExpense += amt;
-        const cat = item.category || "Uncategorized";
-        categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + amt;
+        categoryBreakdown[item.category] = (categoryBreakdown[item.category] || 0) + amt;
       }
     });
 
-    const balance = totalIncome - totalExpense;
-    const savingsRate = totalIncome > 0 ? (((totalIncome - totalExpense) / totalIncome) * 100).toFixed(1) : 0;
+    const netBalance = totalIncome - totalExpense;
+    const savingsRate = totalIncome > 0 ? ((netBalance / totalIncome) * 100).toFixed(1) : 0;
 
     res.status(200).json({
       success: true,
       summary: {
         totalIncome,
         totalExpense,
-        balance,
-        savingsRate: Number(savingsRate),
+        netBalance,
+        savingsRate: parseFloat(savingsRate),
         transactionCount: expenses.length,
         categoryBreakdown,
       },
@@ -103,47 +95,53 @@ const getExpenseSummary = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to compute financial summary",
+      error: error.message,
     });
   }
 };
 
-// CREATE EXPENSE
+// CREATE NEW EXPENSE
 const createExpense = async (req, res) => {
   try {
-    const { title, amount, category, type, date, description } = req.body;
+    const { title, amount, category, type, description, date } = req.body;
 
-    if (!title || !amount || !category) {
+    if (!title || amount === undefined || !category) {
       return res.status(400).json({
         success: false,
         message: "Please provide title, amount, and category",
       });
     }
 
-    const expenseData = {
-      title,
-      amount: Number(amount),
-      category,
-      type: type || "expense",
-      date: date ? new Date(date) : new Date(),
-      description: description || "",
-    };
-
-    if (req.user && req.user.id) {
-      expenseData.user = req.user.id;
+    // Determine user id (authenticated user or fallback if provided)
+    const userId = req.user ? req.user.id : req.body.user;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authorization required: Please log in to record transactions",
+      });
     }
 
-    const expense = await Expense.create(expenseData);
+    const expense = await Expense.create({
+      title: title.trim(),
+      amount: Number(amount),
+      category: category.trim(),
+      type: type || "expense",
+      description: description ? description.trim() : "",
+      date: date ? new Date(date) : new Date(),
+      user: userId,
+    });
 
     res.status(201).json({
       success: true,
-      message: "Expense Created Successfully",
+      message: "Transaction recorded successfully",
       data: expense,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to create transaction",
+      error: error.message,
     });
   }
 };
@@ -151,8 +149,13 @@ const createExpense = async (req, res) => {
 // UPDATE EXPENSE
 const updateExpense = async (req, res) => {
   try {
-    const expense = await Expense.findByIdAndUpdate(
-      req.params.id,
+    const query = { _id: req.params.id };
+    if (req.user && req.user.id) {
+      query.user = req.user.id;
+    }
+
+    const updatedExpense = await Expense.findOneAndUpdate(
+      query,
       req.body,
       {
         new: true,
@@ -160,22 +163,23 @@ const updateExpense = async (req, res) => {
       }
     );
 
-    if (!expense) {
+    if (!updatedExpense) {
       return res.status(404).json({
         success: false,
-        message: "Expense Not Found",
+        message: "Transaction not found or unauthorized",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "Expense Updated Successfully",
-      data: expense,
+      message: "Transaction updated successfully",
+      data: updatedExpense,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to update transaction",
+      error: error.message,
     });
   }
 };
@@ -183,24 +187,30 @@ const updateExpense = async (req, res) => {
 // DELETE EXPENSE
 const deleteExpense = async (req, res) => {
   try {
-    const expense = await Expense.findByIdAndDelete(req.params.id);
+    const query = { _id: req.params.id };
+    if (req.user && req.user.id) {
+      query.user = req.user.id;
+    }
 
-    if (!expense) {
+    const deletedExpense = await Expense.findOneAndDelete(query);
+
+    if (!deletedExpense) {
       return res.status(404).json({
         success: false,
-        message: "Expense Not Found",
+        message: "Transaction not found or unauthorized",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "Expense Deleted Successfully",
+      message: "Transaction deleted successfully",
       data: { id: req.params.id },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to delete transaction",
+      error: error.message,
     });
   }
 };

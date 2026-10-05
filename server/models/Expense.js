@@ -4,37 +4,43 @@ const expenseSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      required: [true, "Title is required"],
+      required: true,
       trim: true,
     },
+
     amount: {
       type: Number,
-      required: [true, "Amount is required"],
-      min: [0.01, "Amount must be greater than zero"],
+      required: true,
+      min: 0,
     },
+
     category: {
       type: String,
-      required: [true, "Category is required"],
+      required: true,
       trim: true,
     },
+
     type: {
       type: String,
-      enum: ["expense", "income"],
+      enum: ["income", "expense"],
       default: "expense",
     },
-    date: {
-      type: Date,
-      default: Date.now,
-    },
+
     description: {
       type: String,
       default: "",
       trim: true,
     },
+
+    date: {
+      type: Date,
+      default: Date.now,
+    },
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: false,
+      required: true,
     },
   },
   {

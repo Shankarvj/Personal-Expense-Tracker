@@ -1,6 +1,6 @@
 /**
  * Expense Tracker - Interactive Core Application
- * Full-Stack Financial Intelligence & Milestone Progression Studio
+ * Full-Stack Financial Intelligence & Authorization Engine
  * Author: Shankar G
  */
 
@@ -10,16 +10,9 @@ const state = {
   activeMilestone: 1,
   activeDoc: 'doc-milestones',
   backendConnected: false,
-  apiBase: window.location.origin.includes('localhost:5000') 
-    ? 'http://localhost:5000/api' 
-    : 'http://localhost:5000/api',
-  currentUser: {
-    id: '673f8e91a03e1b0021c3b12a',
-    name: 'Shankar G',
-    email: 'shankar007139@fsd.college.edu',
-    role: 'Lead Developer'
-  },
-  jwtToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3M2Y4ZTkxYTAzZTFiMDAyMWMzYjEyYSIsImVtYWlsIjoic2hhbmthcjAwNzEzOUBmc2QuY29sbGVnZS5lZHUiaWF0IjoxNzMyNzgwMDAwLCJleHAiOjE3MzMzODQ4MDB9.D2s8V5q3N_K1l_0x9P-Z7mU2w8Y',
+  apiBase: '/api',
+  currentUser: null,
+  jwtToken: localStorage.getItem('auth_token') || '',
   transactions: [],
   categoryColors: {
     'Food': '#10b981',
@@ -32,111 +25,20 @@ const state = {
     'Education': '#a855f7',
     'Salary': '#22c55e',
     'Freelance': '#0ea5e9',
+    'Investments': '#38bdf8',
+    'Gift': '#e879f9',
+    'Refund': '#34d399',
     'Other': '#64748b'
   }
 };
-
-// Initial Seed Data (Loaded if database is empty or local sandbox is active)
-const defaultTransactions = [
-  {
-    _id: 'tx_seed_01',
-    title: 'Monthly Salary Credit',
-    amount: 75000,
-    category: 'Salary',
-    type: 'income',
-    date: '2026-09-01',
-    description: 'Corporate payroll direct deposit'
-  },
-  {
-    _id: 'tx_seed_02',
-    title: 'Apartment Lease Rent',
-    amount: 18000,
-    category: 'Housing',
-    type: 'expense',
-    date: '2026-09-02',
-    description: 'Monthly flat rent payment'
-  },
-  {
-    _id: 'tx_seed_03',
-    title: 'Supermarket Groceries',
-    amount: 4250,
-    category: 'Food',
-    type: 'expense',
-    date: '2026-09-05',
-    description: 'Fresh organic produce & pantry staples'
-  },
-  {
-    _id: 'tx_seed_04',
-    title: 'High-speed Fiber Broadband',
-    amount: 1299,
-    category: 'Utilities',
-    type: 'expense',
-    date: '2026-09-08',
-    description: 'Monthly 500Mbps optical fiber bill'
-  },
-  {
-    _id: 'tx_seed_05',
-    title: 'Fuel & Metro Transit Reload',
-    amount: 2800,
-    category: 'Travel',
-    type: 'expense',
-    date: '2026-09-12',
-    description: 'Commute petrol and rapid transit card'
-  },
-  {
-    _id: 'tx_seed_06',
-    title: 'Freelance Web Design Milestone',
-    amount: 22500,
-    category: 'Freelance',
-    type: 'income',
-    date: '2026-09-15',
-    description: 'UI/UX design delivery for client portal'
-  },
-  {
-    _id: 'tx_seed_07',
-    title: 'Gourmet Dining & Bistro',
-    amount: 3100,
-    category: 'Food',
-    type: 'expense',
-    date: '2026-09-19',
-    description: 'Evening dinner with engineering peers'
-  },
-  {
-    _id: 'tx_seed_08',
-    title: 'Health Checkup & Pharmacy',
-    amount: 1600,
-    category: 'Healthcare',
-    type: 'expense',
-    date: '2026-09-22',
-    description: 'Routine wellness consultation and supplements'
-  },
-  {
-    _id: 'tx_seed_09',
-    title: 'Cloud Certification Exam',
-    amount: 4500,
-    category: 'Education',
-    type: 'expense',
-    date: '2026-09-25',
-    description: 'Professional cloud architecture voucher'
-  },
-  {
-    _id: 'tx_seed_10',
-    title: 'Cinema & Streaming Pass',
-    amount: 1150,
-    category: 'Entertainment',
-    type: 'expense',
-    date: '2026-09-27',
-    description: 'IMAX tickets and digital subscriptions'
-  }
-];
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', async () => {
   setupNavigation();
   updateCategoryOptions();
   setTodayDateInput();
-  initLocalStorage();
   await checkBackendStatus();
+  await initAuth();
   await loadTransactions();
   renderMilestoneViews();
 });
@@ -162,20 +64,319 @@ function setupNavigation() {
   });
 }
 
-// Initial Local Storage setup
-function initLocalStorage() {
-  const stored = localStorage.getItem('expense_tracker_txs');
-  if (!stored) {
-    localStorage.setItem('expense_tracker_txs', JSON.stringify(defaultTransactions));
-    state.transactions = [...defaultTransactions];
+// ========================================================
+// AUTHENTICATION & SESSION MANAGEMENT
+// ========================================================
+
+// Initialize user session from localStorage and verify profile
+async function initAuth() {
+  const savedToken = localStorage.getItem('auth_token');
+  const savedUser = localStorage.getItem('auth_user');
+
+  if (savedToken) {
+    state.jwtToken = savedToken;
+    if (savedUser) {
+      try {
+        state.currentUser = JSON.parse(savedUser);
+      } catch (e) {
+        state.currentUser = null;
+      }
+    }
+
+    // Verify token validity with backend if server is connected
+    if (state.backendConnected) {
+      try {
+        const res = await fetch(`${state.apiBase}/users/profile`, {
+          headers: {
+            'Authorization': `Bearer ${state.jwtToken}`
+          }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.user) {
+            state.currentUser = json.user;
+            localStorage.setItem('auth_user', JSON.stringify(json.user));
+          }
+        } else {
+          // Token expired or invalid
+          console.warn('JWT session expired or invalid. Resetting credentials.');
+          state.jwtToken = '';
+          state.currentUser = null;
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+        }
+      } catch (err) {
+        console.warn('Could not verify profile with server:', err);
+      }
+    }
   } else {
-    try {
-      state.transactions = JSON.parse(stored);
-    } catch (e) {
-      state.transactions = [...defaultTransactions];
+    state.jwtToken = '';
+    state.currentUser = null;
+  }
+
+  updateAuthUI();
+}
+
+// Update UI according to authentication state
+function updateAuthUI() {
+  const unauthBox = document.getElementById('unauthHeaderBox');
+  const authBox = document.getElementById('authHeaderBox');
+  const guestBanner = document.getElementById('guestNoticeBanner');
+  const userAvatar = document.getElementById('userAvatar');
+  const userNameDisplay = document.getElementById('userNameDisplay');
+  const authBadge = document.getElementById('authBadge');
+  const activeJwtTextarea = document.getElementById('activeJwtTextarea');
+
+  if (state.currentUser && state.jwtToken) {
+    // Authenticated state
+    if (unauthBox) unauthBox.style.display = 'none';
+    if (authBox) authBox.style.display = 'flex';
+    if (guestBanner) guestBanner.style.display = 'none';
+
+    const name = state.currentUser.name || 'User';
+    const initials = name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+
+    if (userAvatar) userAvatar.innerText = initials || 'U';
+    if (userNameDisplay) userNameDisplay.innerText = name;
+    if (authBadge) {
+      authBadge.innerText = 'Authenticated (JWT)';
+      authBadge.style.color = '#34d399';
+    }
+
+    // Profile modal details
+    const profileAvatar = document.getElementById('profileModalAvatar');
+    const profileName = document.getElementById('profileModalUserName');
+    const profileEmail = document.getElementById('profileModalUserEmail');
+    const profileRole = document.getElementById('profileModalRole');
+
+    if (profileAvatar) profileAvatar.innerText = initials || 'U';
+    if (profileName) profileName.innerText = name;
+    if (profileEmail) profileEmail.innerText = state.currentUser.email || '';
+    if (profileRole) profileRole.innerText = 'Active Session (JWT Bearer Protected)';
+    if (activeJwtTextarea) activeJwtTextarea.value = state.jwtToken;
+
+    // Update JWT visualizer in Milestone 7 if active
+    updateJwtWorkshopDisplay();
+  } else {
+    // Unauthenticated state
+    if (unauthBox) unauthBox.style.display = 'block';
+    if (authBox) authBox.style.display = 'none';
+    if (guestBanner) guestBanner.style.display = 'flex';
+    if (activeJwtTextarea) activeJwtTextarea.value = 'No active JWT token. Please sign in or register to acquire a signed token.';
+    updateJwtWorkshopDisplay();
+  }
+}
+
+// Open Auth Modal (Login / Register)
+function openAuthModal(tab = 'login') {
+  const modal = document.getElementById('authModal');
+  if (!modal) return;
+  modal.classList.add('active');
+  switchAuthTab(tab);
+  hideAuthAlert();
+}
+
+// Close Auth Modal
+function closeAuthModal() {
+  const modal = document.getElementById('authModal');
+  if (modal) modal.classList.remove('active');
+  hideAuthAlert();
+}
+
+// Switch between Login and Register tabs
+function switchAuthTab(tab) {
+  const loginBtn = document.getElementById('authTabLoginBtn');
+  const regBtn = document.getElementById('authTabRegisterBtn');
+  const loginContent = document.getElementById('tabLogin');
+  const regContent = document.getElementById('tabRegister');
+  const title = document.getElementById('authModalTitle');
+
+  hideAuthAlert();
+
+  if (tab === 'register') {
+    if (loginBtn) loginBtn.classList.remove('active');
+    if (regBtn) regBtn.classList.add('active');
+    if (loginContent) loginContent.classList.remove('active');
+    if (regContent) regContent.classList.add('active');
+    if (title) title.innerText = 'Create New Account';
+  } else {
+    if (loginBtn) loginBtn.classList.add('active');
+    if (regBtn) regBtn.classList.remove('active');
+    if (loginContent) loginContent.classList.add('active');
+    if (regContent) regContent.classList.remove('active');
+    if (title) title.innerText = 'Sign In to Expense Tracker';
+  }
+}
+
+// Toggle User Profile Modal
+function toggleUserProfileModal() {
+  const modal = document.getElementById('userProfileModal');
+  if (modal) modal.classList.toggle('active');
+}
+
+// Show alert banner inside auth modal
+function showAuthAlert(msg, type = 'error') {
+  const box = document.getElementById('authAlertBox');
+  if (!box) return;
+  box.className = `auth-alert-box ${type}`;
+  box.innerText = msg;
+}
+
+// Hide alert banner inside auth modal
+function hideAuthAlert() {
+  const box = document.getElementById('authAlertBox');
+  if (!box) return;
+  box.className = 'auth-alert-box';
+  box.innerText = '';
+}
+
+// Handle User Login
+async function handleLogin(event) {
+  event.preventDefault();
+  hideAuthAlert();
+
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const submitBtn = document.getElementById('loginSubmitBtn');
+
+  if (!email || !password) {
+    showAuthAlert('Please enter both your email address and password.', 'error');
+    return;
+  }
+
+  try {
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Authenticating...';
+    }
+
+    const res = await fetch(`${state.apiBase}/users/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Invalid email or password credentials');
+    }
+
+    // Save token and user details
+    state.jwtToken = data.token;
+    state.currentUser = data.user;
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('auth_user', JSON.stringify(data.user));
+
+    updateAuthUI();
+    closeAuthModal();
+    showToast(`Welcome back, ${data.user.name}!`, 'success');
+
+    // Load user's transactions
+    await loadTransactions();
+  } catch (error) {
+    showAuthAlert(error.message, 'error');
+    showToast(error.message, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Sign In';
     }
   }
-  document.getElementById('activeJwtTextarea').value = state.jwtToken;
+}
+
+// Handle User Registration
+async function handleRegister(event) {
+  event.preventDefault();
+  hideAuthAlert();
+
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirmPassword = document.getElementById('regConfirmPassword').value;
+  const submitBtn = document.getElementById('registerSubmitBtn');
+
+  if (!name || !email || !password || !confirmPassword) {
+    showAuthAlert('Please fill in all required fields.', 'error');
+    return;
+  }
+
+  if (password.length < 6) {
+    showAuthAlert('Password must be at least 6 characters long.', 'error');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    showAuthAlert('Passwords do not match. Please re-enter your password.', 'error');
+    return;
+  }
+
+  try {
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Creating Account...';
+    }
+
+    const res = await fetch(`${state.apiBase}/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Registration failed. Please try again.');
+    }
+
+    // Save token and user details
+    state.jwtToken = data.token;
+    state.currentUser = data.user;
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('auth_user', JSON.stringify(data.user));
+
+    updateAuthUI();
+    closeAuthModal();
+    showToast(`Account created successfully! Welcome, ${data.user.name}`, 'success');
+
+    // Load transactions
+    await loadTransactions();
+  } catch (error) {
+    showAuthAlert(error.message, 'error');
+    showToast(error.message, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Register Account';
+    }
+  }
+}
+
+// Handle User Logout
+function logoutUser() {
+  state.jwtToken = '';
+  state.currentUser = null;
+  state.transactions = [];
+
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_user');
+
+  // Close profile modal if open
+  const profileModal = document.getElementById('userProfileModal');
+  if (profileModal) profileModal.classList.remove('active');
+
+  updateAuthUI();
+  updateMetrics();
+  renderLedgerTable();
+  renderCharts();
+
+  showToast('You have been signed out.', 'success');
+  openAuthModal('login');
 }
 
 // Check Backend Connectivity
@@ -200,42 +401,48 @@ async function checkBackendStatus() {
     statusPill.style.background = 'rgba(6, 182, 212, 0.15)';
     statusPill.style.borderColor = 'rgba(6, 182, 212, 0.4)';
     statusPill.style.color = '#38bdf8';
-    statusText.innerText = 'Interactive Sandbox';
+    statusText.innerText = 'Offline Sandbox';
   }
 }
 
 // Load Transactions (Backend or Sandbox)
 async function loadTransactions() {
   if (state.backendConnected) {
-    try {
-      const res = await fetch(`${state.apiBase}/expenses`, {
-        headers: {
-          'Authorization': `Bearer ${state.jwtToken}`
-        }
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data && json.data.length > 0) {
-          state.transactions = json.data;
-        } else {
-          // If Atlas DB is currently empty, seed from defaultTransactions
-          for (const item of defaultTransactions) {
-            await fetch(`${state.apiBase}/expenses`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.jwtToken}`
-              },
-              body: JSON.stringify(item)
-            });
+    if (state.jwtToken) {
+      try {
+        const res = await fetch(`${state.apiBase}/expenses`, {
+          headers: {
+            'Authorization': `Bearer ${state.jwtToken}`
           }
-          const seededRes = await fetch(`${state.apiBase}/expenses`);
-          const seededJson = await seededRes.json();
-          state.transactions = seededJson.data || defaultTransactions;
+        });
+        if (res.ok) {
+          const json = await res.json();
+          state.transactions = json.data || [];
+        } else if (res.status === 401) {
+          // Token expired or invalid
+          console.warn('Session unauthorized. Logging out.');
+          logoutUser();
+          return;
         }
+      } catch (e) {
+        console.warn('Backend fetch failed:', e);
+        state.transactions = [];
       }
-    } catch (e) {
-      console.warn('Backend fetch failed, using local state:', e);
+    } else {
+      // Unauthenticated state with connected backend
+      state.transactions = [];
+    }
+  } else {
+    // Offline local storage fallback
+    const stored = localStorage.getItem('expense_tracker_txs');
+    if (stored) {
+      try {
+        state.transactions = JSON.parse(stored);
+      } catch (e) {
+        state.transactions = [];
+      }
+    } else {
+      state.transactions = [];
     }
   }
 
@@ -595,9 +802,16 @@ async function handleTransactionSubmit(event) {
     return;
   }
 
+  // If backend is connected but user is not signed in, prompt authentication
+  if (state.backendConnected && !state.jwtToken) {
+    showToast('Please sign in or register to record transactions to the database', 'error');
+    openAuthModal('login');
+    return;
+  }
+
   const payload = { title, amount, category, type, date, description };
 
-  if (state.backendConnected) {
+  if (state.backendConnected && state.jwtToken) {
     try {
       if (id) {
         // PUT update
@@ -609,7 +823,10 @@ async function handleTransactionSubmit(event) {
           },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('Update failed');
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || 'Update failed');
+        }
         showToast('Transaction updated successfully', 'success');
       } else {
         // POST create
@@ -621,23 +838,28 @@ async function handleTransactionSubmit(event) {
           },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('Create failed');
-        showToast('New entry recorded in ledger', 'success');
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || 'Create failed');
+        }
+        showToast('New entry recorded in database', 'success');
       }
       await loadTransactions();
       closeTransactionModal();
       return;
     } catch (e) {
-      console.warn('API error, falling back to local store:', e);
+      console.warn('API error:', e);
+      showToast(e.message || 'Failed to save transaction', 'error');
+      return;
     }
   }
 
-  // Local fallback mutation
+  // Local fallback mutation (offline sandbox)
   if (id) {
     const idx = state.transactions.findIndex(t => t._id === id);
     if (idx !== -1) {
       state.transactions[idx] = { ...state.transactions[idx], ...payload };
-      showToast('Transaction updated (Local)', 'success');
+      showToast('Transaction updated (Sandbox)', 'success');
     }
   } else {
     const newEntry = {
@@ -646,7 +868,7 @@ async function handleTransactionSubmit(event) {
       createdAt: new Date().toISOString()
     };
     state.transactions.unshift(newEntry);
-    showToast('New transaction created (Local)', 'success');
+    showToast('New transaction created (Sandbox)', 'success');
   }
 
   localStorage.setItem('expense_tracker_txs', JSON.stringify(state.transactions));
@@ -661,6 +883,12 @@ async function deleteTransaction(id) {
   if (!confirm('Are you sure you want to delete this record?')) return;
 
   if (state.backendConnected) {
+    if (!state.jwtToken) {
+      showToast('Please sign in to delete records from the database', 'error');
+      openAuthModal('login');
+      return;
+    }
+
     try {
       const res = await fetch(`${state.apiBase}/expenses/${id}`, {
         method: 'DELETE',
@@ -672,9 +900,14 @@ async function deleteTransaction(id) {
         showToast('Record deleted from database', 'success');
         await loadTransactions();
         return;
+      } else {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Delete failed');
       }
     } catch (e) {
-      console.warn('Backend delete failed, falling back to local:', e);
+      console.warn('Backend delete failed:', e);
+      showToast(e.message || 'Failed to delete transaction', 'error');
+      return;
     }
   }
 
@@ -1083,26 +1316,63 @@ function simulateBcryptCompare() {
   }
 }
 
+function updateJwtWorkshopDisplay() {
+  const jwtP1 = document.getElementById('jwtP1');
+  const jwtP2 = document.getElementById('jwtP2');
+  const jwtP3 = document.getElementById('jwtP3');
+  const payloadBox = document.getElementById('jwtPayloadDisplay');
+  const activeBearerCode = document.getElementById('activeBearerCode');
+
+  if (state.jwtToken && state.jwtToken.includes('.')) {
+    const parts = state.jwtToken.split('.');
+    if (jwtP1) jwtP1.innerText = parts[0] || 'header';
+    if (jwtP2) jwtP2.innerText = parts[1] || 'payload';
+    if (jwtP3) jwtP3.innerText = parts[2] || 'signature';
+
+    try {
+      const decodedPayload = JSON.parse(atob(parts[1]));
+      if (payloadBox) payloadBox.innerText = JSON.stringify(decodedPayload, null, 2);
+    } catch (e) {
+      if (payloadBox && state.currentUser) {
+        payloadBox.innerText = JSON.stringify({
+          id: state.currentUser.id || state.currentUser._id,
+          email: state.currentUser.email,
+          name: state.currentUser.name
+        }, null, 2);
+      }
+    }
+
+    if (activeBearerCode) {
+      activeBearerCode.innerText = `Authorization: Bearer ${state.jwtToken.substring(0, 24)}...`;
+    }
+  } else {
+    // Default preview placeholder
+    const sampleP1 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+    const samplePayload = {
+      id: state.currentUser ? (state.currentUser.id || state.currentUser._id) : 'guest_session',
+      email: state.currentUser ? state.currentUser.email : 'guest@example.com',
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 604800
+    };
+    const sampleP2 = btoa(JSON.stringify(samplePayload)).replace(/=/g, '');
+    const sampleP3 = 'LIVE_BACKEND_SIGNED_JWT';
+
+    if (jwtP1) jwtP1.innerText = sampleP1;
+    if (jwtP2) jwtP2.innerText = sampleP2;
+    if (jwtP3) jwtP3.innerText = sampleP3;
+    if (payloadBox) payloadBox.innerText = JSON.stringify(samplePayload, null, 2);
+    if (activeBearerCode) activeBearerCode.innerText = 'Authorization: Bearer <sign-in-to-generate>';
+  }
+}
+
 function regenerateJwtDemo() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-  let sig = '';
-  for (let i = 0; i < 27; i++) sig += chars.charAt(Math.floor(Math.random() * chars.length));
-
-  const p1 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
-  const p2 = btoa(JSON.stringify({
-    id: state.currentUser.id,
-    email: state.currentUser.email,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 604800
-  })).replace(/=/g, '');
-
-  state.jwtToken = `${p1}.${p2}.${sig}`;
-
-  document.getElementById('jwtP1').innerText = p1;
-  document.getElementById('jwtP2').innerText = p2;
-  document.getElementById('jwtP3').innerText = sig;
-  document.getElementById('activeBearerCode').innerText = `Authorization: Bearer ${state.jwtToken.substring(0, 24)}...`;
-  document.getElementById('activeJwtTextarea').value = state.jwtToken;
+  if (state.jwtToken) {
+    updateJwtWorkshopDisplay();
+    showToast('Active session JWT visualizer updated', 'success');
+  } else {
+    showToast('Please sign in or register to acquire a live server token', 'info');
+    openAuthModal('login');
+  }
 }
 
 function copyJwtToClipboard() {

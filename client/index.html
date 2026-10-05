@@ -61,22 +61,60 @@
         </button>
       </nav>
 
-      <!-- System Diagnostic Status Pill & Auth Simulator -->
+      <!-- System Diagnostic Status Pill & Auth Controls -->
       <div class="header-actions">
         <div class="backend-status-badge" id="backendStatusPill" title="Backend Server Connectivity">
           <span class="pulse-dot"></span>
           <span id="backendStatusText">Connecting...</span>
         </div>
-        <div class="user-pill" id="userPill" onclick="toggleUserAuthModal()">
-          <span class="user-avatar" id="userAvatar">SG</span>
-          <span class="user-name" id="userNameDisplay">Shankar G</span>
-          <span class="auth-role" id="authBadge">Demo / JWT</span>
+
+        <!-- Unauthenticated State View -->
+        <div id="unauthHeaderBox">
+          <button class="auth-header-btn" onclick="openAuthModal('login')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Sign In / Register
+          </button>
+        </div>
+
+        <!-- Authenticated State View -->
+        <div id="authHeaderBox" style="display: none; align-items: center; gap: 10px;">
+          <div class="user-pill" id="userPill" onclick="toggleUserProfileModal()" title="View Profile & JWT Session">
+            <span class="user-avatar" id="userAvatar">U</span>
+            <span class="user-name" id="userNameDisplay">User</span>
+            <span class="auth-role" id="authBadge">JWT Active</span>
+          </div>
+          <button class="logout-btn" onclick="logoutUser()" title="Sign Out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Logout
+          </button>
         </div>
       </div>
     </header>
 
     <!-- TAB 1: FINANCIAL COMMAND CENTER (EXPENSE TRACKER) -->
     <main class="tab-pane active" id="trackerTab">
+      <!-- Guest Notice Banner (Shown when not authenticated) -->
+      <div class="guest-notice-banner" id="guestNoticeBanner">
+        <div class="guest-notice-content">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <div>
+            <h4>Database Sync & Authorization Required</h4>
+            <p>You are in offline sandbox view. Sign In or Create an Account to save, modify, and synchronize your transactions with MongoDB Atlas.</p>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAuthModal('login')">Sign In / Register</button>
+      </div>
+
       <!-- Top Metrics Dashboard -->
       <section class="metrics-grid">
         <div class="metric-card balance-card">
@@ -801,6 +839,7 @@
         </div>
 
         <div class="docs-article" id="docsArticle">
+          <!-- Dynamically populated or switchable -->
           <div class="doc-content-section active" id="doc-milestones">
             <h1>Milestone Progression & Technical Deliverables</h1>
             <p class="lead">Complete academic and practical lab report documenting Milestones 01 through 07 for the Personal Expense Tracker.</p>
@@ -862,10 +901,18 @@
             </ul>
           </div>
 
-          <div class="doc-content-section" id="doc-requirements"></div>
-          <div class="doc-content-section" id="doc-db"></div>
-          <div class="doc-content-section" id="doc-api"></div>
-          <div class="doc-content-section" id="doc-testing"></div>
+          <div class="doc-content-section" id="doc-requirements">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="doc-content-section" id="doc-db">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="doc-content-section" id="doc-api">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="doc-content-section" id="doc-testing">
+            <!-- Rendered dynamically -->
+          </div>
         </div>
       </div>
     </main>
@@ -910,7 +957,9 @@
           </div>
           <div class="form-group flex-1">
             <label class="form-label">Category *</label>
-            <select id="txCategory" class="select-dropdown w-100" required></select>
+            <select id="txCategory" class="select-dropdown w-100" required>
+              <!-- Populated dynamically based on type -->
+            </select>
           </div>
         </div>
 
@@ -932,31 +981,112 @@
     </div>
   </div>
 
-  <!-- AUTH / USER PROFILE MODAL -->
-  <div class="modal-overlay" id="userAuthModal">
+  <!-- AUTHENTICATION MODAL (LOGIN / REGISTER) -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="authModalTitle">Access Authorization</h3>
+        <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="auth-tabs-nav">
+        <button class="auth-tab-btn active" id="authTabLoginBtn" onclick="switchAuthTab('login')">Sign In</button>
+        <button class="auth-tab-btn" id="authTabRegisterBtn" onclick="switchAuthTab('register')">Create Account</button>
+      </div>
+
+      <!-- Alert / Status Notice -->
+      <div class="auth-alert-box" id="authAlertBox"></div>
+
+      <!-- SIGN IN TAB -->
+      <div class="auth-tab-content active" id="tabLogin">
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" id="loginEmail" class="form-input" placeholder="e.g. user@example.com" required autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Password *</label>
+            <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+
+          <div class="modal-footer" style="margin-top: 20px;">
+            <button type="button" class="btn btn-secondary" onclick="closeAuthModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="loginSubmitBtn" style="min-width: 120px;">
+              Sign In
+            </button>
+          </div>
+
+          <div class="auth-switch-link">
+            Don't have an account? <a onclick="switchAuthTab('register')">Create an account</a>
+          </div>
+        </form>
+      </div>
+
+      <!-- REGISTER TAB -->
+      <div class="auth-tab-content" id="tabRegister">
+        <form id="registerForm" onsubmit="handleRegister(event)">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" id="regName" class="form-input" placeholder="e.g. Alex Morgan" required autocomplete="name">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input type="email" id="regEmail" class="form-input" placeholder="e.g. alex@example.com" required autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Password * (Minimum 6 characters)</label>
+            <input type="password" id="regPassword" class="form-input" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Confirm Password *</label>
+            <input type="password" id="regConfirmPassword" class="form-input" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+          </div>
+
+          <div class="modal-footer" style="margin-top: 20px;">
+            <button type="button" class="btn btn-secondary" onclick="closeAuthModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="registerSubmitBtn" style="min-width: 140px;">
+              Register Account
+            </button>
+          </div>
+
+          <div class="auth-switch-link">
+            Already registered? <a onclick="switchAuthTab('login')">Sign In here</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTHENTICATED USER PROFILE & JWT DETAILS MODAL -->
+  <div class="modal-overlay" id="userProfileModal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>User Identity & JWT Token Configuration</h3>
-        <button class="modal-close" onclick="toggleUserAuthModal()">&times;</button>
+        <h3>Security Profile & JWT Authorization</h3>
+        <button class="modal-close" onclick="toggleUserProfileModal()">&times;</button>
       </div>
       <div class="auth-modal-body">
         <div class="user-meta-preview">
-          <div class="user-big-avatar">SG</div>
+          <div class="user-big-avatar" id="profileModalAvatar">U</div>
           <div class="user-big-details">
-            <h4 id="authModalUserName">Shankar G</h4>
-            <p id="authModalUserEmail">shankar007139@fsd.college.edu</p>
-            <span class="badge success">Role: Full-Stack Developer</span>
+            <h4 id="profileModalUserName">User Name</h4>
+            <p id="profileModalUserEmail">user@example.com</p>
+            <span class="badge success" id="profileModalRole">Active Session (JWT Bearer Protected)</span>
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Active Bearer JWT Token:</label>
-          <textarea class="code-textarea" id="activeJwtTextarea" rows="3" readonly></textarea>
+          <label class="form-label">Active Signed Bearer JWT Token (Stateless Authentication):</label>
+          <textarea class="code-textarea" id="activeJwtTextarea" rows="4" readonly></textarea>
         </div>
 
         <div class="auth-buttons-row">
-          <button class="btn btn-primary btn-sm" onclick="loginDemoAccount()">Refresh Token</button>
-          <button class="btn btn-secondary btn-sm" onclick="toggleUserAuthModal()">Close</button>
+          <button class="btn btn-primary btn-sm" onclick="copyJwtToClipboard()">Copy Token</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleUserProfileModal()">Close</button>
         </div>
       </div>
     </div>
