@@ -274,6 +274,269 @@ function switchAuthTab(tab) {
   }
 }
 
+// Toggle Password Visibility (Eye Icon)
+function togglePasswordVisibility(inputId, btnEl) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btnEl.innerText = '🙈';
+    btnEl.title = 'Hide password';
+  } else {
+    input.type = 'password';
+    btnEl.innerText = '👁️';
+    btnEl.title = 'Show password';
+  }
+}
+
+// Live Email Format Validation
+function validateEmailField(inputEl, feedbackId) {
+  const feedback = document.getElementById(feedbackId);
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const val = inputEl.value.trim();
+
+  if (!feedback) return;
+
+  if (val.length === 0) {
+    feedback.className = 'input-feedback';
+    feedback.innerText = '';
+    return;
+  }
+
+  if (emailRegex.test(val)) {
+    feedback.className = 'input-feedback valid';
+    feedback.innerText = '✓ Valid email address';
+  } else {
+    feedback.className = 'input-feedback invalid';
+    feedback.innerText = '✕ Please enter a valid email (e.g. name@domain.com)';
+  }
+}
+
+// Live Full Name Validation
+function validateNameField(inputEl) {
+  const counter = document.getElementById('regNameCounter');
+  const feedback = document.getElementById('regNameFeedback');
+  const val = inputEl.value.trim();
+
+  if (counter) counter.innerText = `${inputEl.value.length} / 50`;
+
+  if (!feedback) return;
+  if (val.length === 0) {
+    feedback.className = 'input-feedback';
+    feedback.innerText = '';
+  } else if (val.length < 2) {
+    feedback.className = 'input-feedback invalid';
+    feedback.innerText = '✕ Name must be at least 2 characters';
+  } else {
+    feedback.className = 'input-feedback valid';
+    feedback.innerText = '✓ Looks good';
+  }
+}
+
+// Live Password Strength Meter
+function validatePasswordStrengthLive(password) {
+  const box = document.getElementById('passwordStrengthBox');
+  const bar = document.getElementById('strengthBarFill');
+  const label = document.getElementById('strengthText');
+  const hint = document.getElementById('strengthHint');
+
+  const critLength = document.getElementById('critLength');
+  const critNumber = document.getElementById('critNumber');
+  const critCase = document.getElementById('critCase');
+  const critSpecial = document.getElementById('critSpecial');
+
+  if (!box) return;
+
+  if (!password || password.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+
+  box.style.display = 'block';
+
+  let score = 0;
+  const hasLength = password.length >= 6;
+  const hasNumber = /\d/.test(password);
+  const hasCase = /[a-z]/.test(password) && /[A-Z]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+  if (hasLength) score++;
+  if (hasNumber) score++;
+  if (hasCase) score++;
+  if (hasSpecial) score++;
+
+  if (critLength) critLength.className = `criteria-chip ${hasLength ? 'passed' : ''}`;
+  if (critNumber) critNumber.className = `criteria-chip ${hasNumber ? 'passed' : ''}`;
+  if (critCase) critCase.className = `criteria-chip ${hasCase ? 'passed' : ''}`;
+  if (critSpecial) critSpecial.className = `criteria-chip ${hasSpecial ? 'passed' : ''}`;
+
+  if (score === 1) {
+    bar.style.width = '25%';
+    bar.style.background = '#f43f5e';
+    label.style.color = '#fb7185';
+    label.innerText = 'Strength: Weak';
+    hint.innerText = 'Add numbers & letters';
+  } else if (score === 2) {
+    bar.style.width = '50%';
+    bar.style.background = '#f59e0b';
+    label.style.color = '#fbbf24';
+    label.innerText = 'Strength: Fair';
+    hint.innerText = 'Include mixed case & symbols';
+  } else if (score === 3) {
+    bar.style.width = '75%';
+    bar.style.background = '#06b6d4';
+    label.style.color = '#38bdf8';
+    label.innerText = 'Strength: Good';
+    hint.innerText = 'Almost bulletproof';
+  } else if (score === 4) {
+    bar.style.width = '100%';
+    bar.style.background = '#10b981';
+    label.style.color = '#34d399';
+    label.innerText = 'Strength: Strong 🛡️';
+    hint.innerText = 'Excellent password security';
+  }
+}
+
+// Live Confirm Password Matcher
+function validatePasswordMatchLive() {
+  const p1 = document.getElementById('regPassword').value;
+  const p2 = document.getElementById('regConfirmPassword').value;
+  const feedback = document.getElementById('regConfirmFeedback');
+
+  if (!feedback) return;
+
+  if (p2.length === 0) {
+    feedback.className = 'input-feedback';
+    feedback.innerText = '';
+    return;
+  }
+
+  if (p1 === p2) {
+    feedback.className = 'input-feedback valid';
+    feedback.innerText = '✓ Passwords match';
+  } else {
+    feedback.className = 'input-feedback invalid';
+    feedback.innerText = '✕ Passwords do not match';
+  }
+}
+
+// Quick 1-Click Demo Login
+async function quickDemoLogin() {
+  showToast('Connecting to Demo Session...', 'info');
+  document.getElementById('loginEmail').value = 'demo@expensetracker.io';
+  document.getElementById('loginPassword').value = 'DemoPassword123!';
+
+  const submitBtn = document.getElementById('loginSubmitBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Signing In...';
+  }
+
+  // Attempt backend demo login or auto-register if not existing
+  try {
+    let res = await fetch(`${state.apiBase}/users/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'demo@expensetracker.io', password: 'DemoPassword123!' })
+    });
+    let data = await res.json();
+
+    if (!res.ok || !data.success) {
+      // Auto-register demo account if first time
+      res = await fetch(`${state.apiBase}/users/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Demo Financial User', email: 'demo@expensetracker.io', password: 'DemoPassword123!' })
+      });
+      data = await res.json();
+    }
+
+    if (data && data.success) {
+      state.jwtToken = data.token;
+      state.currentUser = data.user;
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('auth_user', JSON.stringify(data.user));
+
+      updateAuthUI();
+      closeAuthModal();
+      showToast('Logged in successfully as Demo User!', 'success');
+      await loadTransactions();
+    } else {
+      throw new Error(data.message || 'Demo login failed');
+    }
+  } catch (err) {
+    // Sandbox fallback
+    state.currentUser = { name: 'Demo User', email: 'demo@expensetracker.io', _id: 'demo_user_id' };
+    updateAuthUI();
+    closeAuthModal();
+    showToast('Entered Offline Demo Sandbox Mode!', 'success');
+    await loadTransactions();
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Sign In';
+    }
+  }
+}
+
+function fillDemoCredentials() {
+  document.getElementById('loginEmail').value = 'demo@expensetracker.io';
+  document.getElementById('loginPassword').value = 'DemoPassword123!';
+  showToast('Filled Demo Credentials. Click Sign In.', 'info');
+}
+
+// Live Transaction Form Validations
+function validateTxTitle(inputEl) {
+  const counter = document.getElementById('txTitleCounter');
+  const feedback = document.getElementById('txTitleFeedback');
+  const val = inputEl.value.trim();
+
+  if (counter) counter.innerText = `${inputEl.value.length} / 100`;
+
+  if (!feedback) return;
+  if (val.length === 0) {
+    feedback.className = 'input-feedback';
+    feedback.innerText = '';
+  } else if (val.length < 2) {
+    feedback.className = 'input-feedback invalid';
+    feedback.innerText = '✕ Title must be at least 2 characters';
+  } else {
+    feedback.className = 'input-feedback valid';
+    feedback.innerText = '✓ Title valid';
+  }
+}
+
+function validateTxAmount(inputEl) {
+  const feedback = document.getElementById('txAmountFeedback');
+  const val = parseFloat(inputEl.value);
+
+  if (!feedback) return;
+  if (isNaN(val) || inputEl.value === '') {
+    feedback.className = 'input-feedback';
+    feedback.innerText = '';
+  } else if (val <= 0) {
+    feedback.className = 'input-feedback invalid';
+    feedback.innerText = '✕ Amount must be greater than 0';
+  } else if (val > 100000000) {
+    feedback.className = 'input-feedback invalid';
+    feedback.innerText = '✕ Amount exceeds maximum limit';
+  } else {
+    feedback.className = 'input-feedback valid';
+    feedback.innerText = `✓ ${formatCurrency(val)}`;
+  }
+}
+
+function setQuickDate(offsetDays) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const dateStr = d.toISOString().split('T')[0];
+  const dateInput = document.getElementById('txDate');
+  if (dateInput) {
+    dateInput.value = dateStr;
+    showToast(`Date set to ${offsetDays === 0 ? 'Today' : 'Yesterday'} (${dateStr})`, 'info');
+  }
+}
+
 // Toggle User Profile Modal
 function toggleUserProfileModal() {
   const modal = document.getElementById('userProfileModal');
@@ -310,6 +573,7 @@ async function handleLogin(event) {
 
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
+  const rememberMe = document.getElementById('rememberMeCheckbox')?.checked;
   const submitBtn = document.getElementById('loginSubmitBtn');
 
   if (!email || !password) {
@@ -341,6 +605,12 @@ async function handleLogin(event) {
     localStorage.setItem('auth_token', data.token);
     localStorage.setItem('auth_user', JSON.stringify(data.user));
 
+    if (rememberMe) {
+      localStorage.setItem('remembered_email', email);
+    } else {
+      localStorage.removeItem('remembered_email');
+    }
+
     updateAuthUI();
     closeAuthModal();
     showToast(`Welcome back, ${data.user.name}!`, 'success');
@@ -371,6 +641,11 @@ async function handleRegister(event) {
 
   if (!name || !email || !password || !confirmPassword) {
     showAuthAlert('Please fill in all required fields.', 'error');
+    return;
+  }
+
+  if (name.length < 2) {
+    showAuthAlert('Full name must be at least 2 characters long.', 'error');
     return;
   }
 
