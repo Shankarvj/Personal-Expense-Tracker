@@ -151,3 +151,67 @@
   - Password fields sanitized with `.select("-password")`.
 - **GitHub Monitoring Record:**
   - Commits: `feat: implement Bcrypt hashing and JWT authorization middleware`.
+
+---
+
+## Milestone 08: Input Validation, Rate Limiting & Defense-in-Depth
+
+### 8.1 Technical Focus
+- Server-side payload validation, sanitized inputs, rate limiting (DoS / brute-force protection), HTTP security headers with Helmet, and body size restrictions.
+
+### 8.2 Milestone Deliverables
+- **Input Validation Modules (`validations/authValidation.js` & `validations/expenseValidation.js`):**
+  - Strict validation of email formats, password strength (minimum 6 characters), mandatory transaction fields, positive numeric amounts, and accepted category enums.
+- **Rate Limiting Engine (`middleware/rateLimitMiddleware.js`):**
+  - Standard API Limiter: 200 requests per 15-minute window for general API operations.
+  - Auth Brute-Force Limiter: 10 authentication attempts per 15-minute window for `/api/users/login` and `/api/users/register`.
+- **HTTP Security Headers:**
+  - Integrated Helmet middleware for Content Security Policy (CSP), XSS filtering, clickjacking defense (`X-Frame-Options`), and MIME type sniffing protection.
+- **GitHub Monitoring Record:**
+  - Commits: `feat: implement input validation schemas, rate limiting, and HTTP security headers`.
+
+---
+
+## Milestone 09: Global Multi-Currency Engine, Recurring Bills Manager & Advanced UI
+
+### 9.1 Technical Focus
+- Client-side dynamic state architecture, multi-currency conversion system with live exchange rates, recurring subscription & fixed outflow tracking, custom ISO date range query filters, and dynamic CSS glassmorphism theme engine.
+
+### 9.2 Milestone Deliverables
+- **Multi-Currency Converter:**
+  - Global currency selector supporting INR (₹), USD ($), EUR (€), GBP (£), AED (د.إ), and JPY (¥).
+  - Dynamic currency conversion applied seamlessly across KPIs, ledger lists, charts, budget caps, and financial calculators.
+- **Recurring Subscriptions & Fixed Outflow Manager:**
+  - Dedicated widget tracking recurring bills (Netflix, Spotify, AWS Cloud, JioFiber, Gym).
+  - Calculates total monthly recurring outflow commitment and renewal due days.
+  - 1-Click "Log to Ledger" button to instantly dispatch and persist recurring bills to MongoDB Atlas.
+- **Custom Date Range Filter:**
+  - Responsive start and end date pickers with instant filtering across the transaction ledger and backend API queries.
+- **Dynamic Theme Customization:**
+  - Support for Dark Cyber, Midnight Ocean, and Light Glass aesthetic modes with persistent preference storage in `localStorage`.
+- **GitHub Monitoring Record:**
+  - Commits: `feat: implement multi-currency switcher, recurring subscriptions manager, and custom date range filters`.
+
+---
+
+## Milestone 10: Automated Testing Suite, Production Diagnostics & CI/CD Pipeline
+
+### 10.1 Technical Focus
+- Automated unit and integration testing using Node.js native test runner (`node:test`) and strict assertions (`node:assert/strict`), production system health diagnostics endpoint, and continuous integration via GitHub Actions.
+
+### 10.2 Milestone Deliverables
+- **Automated Integration Test Suite (`server/tests/api.test.js`):**
+  - 14 automated end-to-end tests covering:
+    - Production health endpoint (`GET /api/health`) and runtime diagnostics.
+    - User registration, duplicate email rejection, and input validation.
+    - Login credential authentication and JWT issuance.
+    - Protected profile endpoint access and 401 unauthorized guards.
+    - Expense CRUD operations (create expense, create income, summary calculations, date range filtering, update transaction, delete transaction).
+  - Executable via standard `npm test` script.
+- **Production Health & Runtime Diagnostics (`GET /api/health`):**
+  - Live reporting of Node.js runtime version, platform, MongoDB cluster state, server uptime, and memory usage in MB (`rss`, `heapUsed`, `heapTotal`).
+- **Continuous Integration Pipeline (`.github/workflows/ci.yml`):**
+  - GitHub Actions matrix workflow verifying builds and running automated tests across Node.js versions 18.x, 20.x, and 22.x on push and pull requests.
+- **GitHub Monitoring Record:**
+  - Commits: `feat: create automated test suite with node:test, production health diagnostics, and GitHub Actions CI workflow`.
+

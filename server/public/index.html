@@ -73,8 +73,30 @@
         </button>
       </nav>
 
-      <!-- System Diagnostic Status Pill & Auth Controls -->
+      <!-- System Diagnostic Status Pill, Currency Selector, Theme Toggle & Auth Controls -->
       <div class="header-actions">
+        <!-- Week 9: Multi-Currency Switcher -->
+        <div class="currency-selector-wrap" title="Global Currency Converter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <select id="globalCurrencySelect" class="currency-select" onchange="changeCurrency(this.value)">
+            <option value="INR" selected>INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="AED">AED (د.إ)</option>
+            <option value="JPY">JPY (¥)</option>
+          </select>
+        </div>
+
+        <!-- Week 9: Dynamic Theme Switcher -->
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="cycleTheme()" title="Switch Theme (Dark / Ocean / Glass)">
+          <span id="themeIcon">🌙</span>
+        </button>
+
         <div class="backend-status-badge" id="backendStatusPill" title="Backend Server Connectivity">
           <span class="pulse-dot"></span>
           <span id="backendStatusText">Connecting...</span>
@@ -161,12 +183,12 @@
       </section>
 
       <!-- Charts & Visual Analytics Section -->
-      <section class="analytics-row">
+      <section class="analytics-row three-col">
         <!-- Category Breakdown Visualizer -->
         <div class="analytics-card">
           <div class="card-header">
             <div class="card-title">
-              <span>Category Allocation Breakdown</span>
+              <span>Category Allocation</span>
               <span class="tag">Expenditure Matrix</span>
             </div>
           </div>
@@ -180,12 +202,26 @@
         <div class="analytics-card">
           <div class="card-header">
             <div class="card-title">
-              <span>Spending by Category</span>
-              <span class="tag">Budget Comparison</span>
+              <span>Category Budgets</span>
+              <span class="tag">Spend vs Cap</span>
             </div>
           </div>
           <div class="bar-chart-container" id="categoryBarContainer">
             <!-- Dynamic Category Bars Rendered Here -->
+          </div>
+        </div>
+
+        <!-- Week 9: Subscriptions & Recurring Bills Manager -->
+        <div class="analytics-card subscription-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>Subscriptions & Recurring</span>
+              <span class="tag" id="subTotalMonthly">₹0 / mo</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="openAddSubscriptionModal()" title="Track New Recurring Subscription">+ Add Bill</button>
+          </div>
+          <div class="subscription-scroll-wrap" id="subscriptionsContainer">
+            <!-- Dynamic Subscriptions Rendered Here -->
           </div>
         </div>
       </section>
@@ -207,6 +243,14 @@
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
               <input type="text" id="searchInput" placeholder="Search description, title..." oninput="handleSearchFilter()">
+            </div>
+
+            <!-- Week 9: Date Range Filters -->
+            <div class="date-filter-group" title="Filter by Date Range">
+              <input type="date" id="startDateFilter" class="select-dropdown date-picker" title="Start Date" onchange="handleSearchFilter()">
+              <span class="date-sep">to</span>
+              <input type="date" id="endDateFilter" class="select-dropdown date-picker" title="End Date" onchange="handleSearchFilter()">
+              <button class="btn-clear-date" id="clearDateBtn" onclick="clearDateFilter()" title="Clear Date Range">✕</button>
             </div>
 
             <!-- Category Filter Dropdown -->
@@ -852,6 +896,63 @@
           <button class="btn btn-secondary btn-sm" onclick="toggleUserProfileModal()">Close</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- WEEK 9: ADD RECURRING SUBSCRIPTION MODAL -->
+  <div class="modal-overlay" id="subscriptionModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Track Recurring Subscription</h3>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px;">
+            Set up fixed monthly/yearly recurring bills & auto-log them to MongoDB
+          </p>
+        </div>
+        <button class="modal-close" onclick="closeAddSubscriptionModal()">&times;</button>
+      </div>
+      <form id="subscriptionForm" onsubmit="handleAddSubscription(event)" style="padding: 24px;">
+        <div class="form-group">
+          <label class="form-label">Service / Provider Name *</label>
+          <input type="text" id="subName" class="form-input" placeholder="e.g. Netflix 4K, Spotify Family, AWS Cloud, JioFiber" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Amount (₹) *</label>
+            <input type="number" id="subAmount" class="form-input" placeholder="649" min="1" step="any" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select id="subCategory" class="form-input" required>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Utilities">Utilities & Bills</option>
+              <option value="Housing">Housing & Rent</option>
+              <option value="Healthcare">Healthcare & Fitness</option>
+              <option value="Education">Education</option>
+              <option value="Food">Food & Groceries</option>
+              <option value="Shopping">Shopping</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Billing Frequency</label>
+            <select id="subCycle" class="form-input">
+              <option value="Monthly" selected>Monthly</option>
+              <option value="Yearly">Yearly</option>
+              <option value="Weekly">Weekly</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Day of Month (1 - 31)</label>
+            <input type="number" id="subDueDay" class="form-input" min="1" max="31" value="15" required />
+          </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeAddSubscriptionModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="subSubmitBtn" style="min-width: 150px;">Save Subscription</button>
+        </div>
+      </form>
     </div>
   </div>
 

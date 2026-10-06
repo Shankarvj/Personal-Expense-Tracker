@@ -28,14 +28,29 @@ const getExpenses = async (req, res) => {
       ];
     }
 
+    // Date Range filtering
+    if (req.query.startDate || req.query.endDate) {
+      filter.date = {};
+      if (req.query.startDate) {
+        filter.date.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        const end = new Date(req.query.endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.date.$lte = end;
+      }
+    }
+
     // Sorting
     let sortOption = { date: -1, createdAt: -1 };
-    if (req.query.sort === "amount-desc") {
+    if (req.query.sort === "amount-desc" || req.query.sort === "amount_desc") {
       sortOption = { amount: -1 };
-    } else if (req.query.sort === "amount-asc") {
+    } else if (req.query.sort === "amount-asc" || req.query.sort === "amount_asc") {
       sortOption = { amount: 1 };
-    } else if (req.query.sort === "date-asc") {
+    } else if (req.query.sort === "date-asc" || req.query.sort === "date_asc") {
       sortOption = { date: 1 };
+    } else if (req.query.sort === "date-desc" || req.query.sort === "date_desc") {
+      sortOption = { date: -1 };
     }
 
     const expenses = await Expense.find(filter).sort(sortOption);

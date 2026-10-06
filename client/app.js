@@ -4,6 +4,16 @@
  * Author: Shankar G
  */
 
+// Multi-Currency Converter Exchange Rates (Week 9 Deliverable)
+const currencyRates = {
+  'INR': { symbol: '₹', rate: 1.0, locale: 'en-IN', name: 'Indian Rupee' },
+  'USD': { symbol: '$', rate: 0.012, locale: 'en-US', name: 'US Dollar' },
+  'EUR': { symbol: '€', rate: 0.011, locale: 'de-DE', name: 'Euro' },
+  'GBP': { symbol: '£', rate: 0.0095, locale: 'en-GB', name: 'British Pound' },
+  'AED': { symbol: 'AED', rate: 0.044, locale: 'ar-AE', name: 'UAE Dirham' },
+  'JPY': { symbol: '¥', rate: 1.82, locale: 'ja-JP', name: 'Japanese Yen' }
+};
+
 // Application State
 const state = {
   activeTab: 'trackerTab',
@@ -11,6 +21,8 @@ const state = {
   apiBase: '/api',
   currentUser: null,
   jwtToken: localStorage.getItem('auth_token') || '',
+  currentCurrency: localStorage.getItem('expense_tracker_currency') || 'INR',
+  currentTheme: localStorage.getItem('expense_tracker_theme') || 'theme-dark',
   transactions: [],
   budgets: JSON.parse(localStorage.getItem('expense_tracker_budgets')) || {
     'Food': 8000,
@@ -22,6 +34,13 @@ const state = {
     'Shopping': 4000,
     'Education': 5000
   },
+  subscriptions: JSON.parse(localStorage.getItem('expense_tracker_subscriptions')) || [
+    { id: 'sub-1', name: 'Netflix 4K Ultra', amount: 649, category: 'Entertainment', cycle: 'Monthly', dueDay: 15 },
+    { id: 'sub-2', name: 'Spotify Premium Family', amount: 179, category: 'Entertainment', cycle: 'Monthly', dueDay: 28 },
+    { id: 'sub-3', name: 'AWS Cloud Hosting', amount: 2450, category: 'Utilities', cycle: 'Monthly', dueDay: 5 },
+    { id: 'sub-4', name: 'JioFiber High-Speed', amount: 999, category: 'Utilities', cycle: 'Monthly', dueDay: 20 },
+    { id: 'sub-5', name: 'Gym & Fitness Pass', amount: 2000, category: 'Healthcare', cycle: 'Monthly', dueDay: 1 }
+  ],
   categoryColors: {
     'Food': '#10b981',
     'Housing': '#8b5cf6',
@@ -42,10 +61,19 @@ const state = {
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', async () => {
+  // Apply saved theme
+  document.body.className = state.currentTheme;
+  updateThemeIcon();
+
+  // Apply saved currency
+  const currSelect = document.getElementById('globalCurrencySelect');
+  if (currSelect) currSelect.value = state.currentCurrency;
+
   setupNavigation();
   updateCategoryOptions();
   setTodayDateInput();
   initCalculators();
+  renderSubscriptions();
   await checkBackendStatus();
   await initAuth();
   await loadTransactions();
@@ -498,13 +526,54 @@ async function loadTransactions() {
   calculateEmergencyFund();
 }
 
-// Format Currency
+// Format Currency with Dynamic Exchange Rates (Week 9 Deliverable)
 function formatCurrency(num) {
-  return new Intl.NumberFormat('en-IN', {
+  const curr = currencyRates[state.currentCurrency] || currencyRates['INR'];
+  const converted = (Number(num) || 0) * curr.rate;
+  return new Intl.NumberFormat(curr.locale, {
     style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 2
-  }).format(num);
+    currency: state.currentCurrency === 'AED' ? 'AED' : state.currentCurrency,
+    currencyDisplay: 'narrowSymbol',
+    maximumFractionDigits: state.currentCurrency === 'JPY' ? 0 : 2
+  }).format(converted);
+}
+
+// Switch Currency Global Handler
+function changeCurrency(currCode) {
+  if (!currencyRates[currCode]) return;
+  state.currentCurrency = currCode;
+  localStorage.setItem('expense_tracker_currency', currCode);
+  updateMetrics();
+  renderLedgerTable();
+  renderCharts();
+  renderAnalyticsView();
+  renderBudgetPlanner();
+  renderSubscriptions();
+  calculateEMI();
+  calculateSIP();
+  calculateEmergencyFund();
+  calculateTax();
+  showToast(`Currency converted to ${currCode} (${currencyRates[currCode].symbol})`, 'info');
+}
+
+// Cycle UI Theme (Dark / Ocean / Glass)
+function cycleTheme() {
+  const themes = ['theme-dark', 'theme-ocean', 'theme-glass'];
+  const currentIdx = themes.indexOf(state.currentTheme);
+  const nextTheme = themes[(currentIdx + 1) % themes.length];
+  state.currentTheme = nextTheme;
+  document.body.className = nextTheme;
+  localStorage.setItem('expense_tracker_theme', nextTheme);
+  updateThemeIcon();
+  showToast(`Theme switched to ${nextTheme.replace('theme-', '').toUpperCase()}`, 'info');
+}
+
+function updateThemeIcon() {
+  const icon = document.getElementById('themeIcon');
+  if (!icon) return;
+  if (state.currentTheme === 'theme-ocean') icon.innerText = '🌊';
+  else if (state.currentTheme === 'theme-glass') icon.innerText = '✨';
+  else icon.innerText = '🌙';
 }
 
 // Format Date Display
@@ -556,7 +625,7 @@ function updateMetrics() {
   }
 }
 
-// Render Ledger Table with Filtering
+// Render Ledger Table with Filtering & Custom Date Ranges (Week 9 Deliverable)
 function renderLedgerTable() {
   const tbody = document.getElementById('transactionsTableBody');
   const emptyState = document.getElementById('emptyState');
@@ -564,6 +633,8 @@ function renderLedgerTable() {
   const catFilter = document.getElementById('categoryFilter').value;
   const typeFilter = document.getElementById('typeFilter').value;
   const sort = document.getElementById('sortFilter').value;
+  const startDate = document.getElementById('startDateFilter')?.value;
+  const endDate = document.getElementById('endDateFilter')?.value;
 
   let filtered = state.transactions.filter(t => {
     const matchesSearch = !search || 
@@ -574,7 +645,19 @@ function renderLedgerTable() {
     const matchesCat = catFilter === 'All' || (t.category && t.category.toLowerCase() === catFilter.toLowerCase());
     const matchesType = typeFilter === 'All' || t.type === typeFilter;
 
-    return matchesSearch && matchesCat && matchesType;
+    let matchesDate = true;
+    if (startDate) {
+      const itemDate = new Date(t.date || t.createdAt).setHours(0,0,0,0);
+      const start = new Date(startDate).setHours(0,0,0,0);
+      if (itemDate < start) matchesDate = false;
+    }
+    if (endDate) {
+      const itemDate = new Date(t.date || t.createdAt).setHours(23,59,59,999);
+      const end = new Date(endDate).setHours(23,59,59,999);
+      if (itemDate > end) matchesDate = false;
+    }
+
+    return matchesSearch && matchesCat && matchesType && matchesDate;
   });
 
   // Sorting
@@ -1628,6 +1711,160 @@ function copyJwtToClipboard() {
 }
 
 
+// ========================================================
+// WEEK 9: SUBSCRIPTIONS & RECURRING BILLS ENGINE
+// ========================================================
+
+function renderSubscriptions() {
+  const container = document.getElementById('subscriptionsContainer');
+  const totalMonthlyEl = document.getElementById('subTotalMonthly');
+  if (!container) return;
+
+  let totalMonthly = 0;
+  state.subscriptions.forEach(s => {
+    const amt = Number(s.amount) || 0;
+    if (s.cycle === 'Monthly') totalMonthly += amt;
+    else if (s.cycle === 'Yearly') totalMonthly += amt / 12;
+    else if (s.cycle === 'Weekly') totalMonthly += amt * 4.33;
+  });
+
+  if (totalMonthlyEl) {
+    totalMonthlyEl.innerText = `${formatCurrency(Math.round(totalMonthly))} / mo`;
+  }
+
+  if (state.subscriptions.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 24px 10px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+        No recurring subscriptions tracked.<br>Click <strong>+ Add Bill</strong> to schedule fixed outflows.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = state.subscriptions.map(sub => {
+    return `
+      <div class="subscription-item">
+        <div class="sub-info">
+          <span class="sub-name">${escapeHTML(sub.name)}</span>
+          <div class="sub-meta">
+            <span class="sub-badge">${escapeHTML(sub.category)}</span>
+            <span>• Due day ${sub.dueDay} (${sub.cycle})</span>
+          </div>
+        </div>
+        <div class="sub-actions">
+          <span class="sub-amount">${formatCurrency(sub.amount)}</span>
+          <button class="btn-log-sub" onclick="logSubscriptionToLedger('${sub.id}')" title="Record this subscription into ledger now">Log</button>
+          <button class="btn-del-sub" onclick="deleteSubscription('${sub.id}')" title="Delete subscription">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openAddSubscriptionModal() {
+  const modal = document.getElementById('subscriptionModal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeAddSubscriptionModal() {
+  const modal = document.getElementById('subscriptionModal');
+  if (modal) modal.classList.remove('active');
+  const form = document.getElementById('subscriptionForm');
+  if (form) form.reset();
+}
+
+function handleAddSubscription(e) {
+  e.preventDefault();
+  const name = document.getElementById('subName').value.trim();
+  const amount = parseFloat(document.getElementById('subAmount').value);
+  const category = document.getElementById('subCategory').value;
+  const cycle = document.getElementById('subCycle').value;
+  const dueDay = parseInt(document.getElementById('subDueDay').value, 10);
+
+  if (!name || isNaN(amount) || amount <= 0) {
+    showToast('Please enter a valid subscription name and amount', 'error');
+    return;
+  }
+
+  const newSub = {
+    id: `sub_${Date.now()}`,
+    name,
+    amount,
+    category,
+    cycle,
+    dueDay: dueDay || 15
+  };
+
+  state.subscriptions.push(newSub);
+  localStorage.setItem('expense_tracker_subscriptions', JSON.stringify(state.subscriptions));
+  renderSubscriptions();
+  closeAddSubscriptionModal();
+  showToast(`Subscription "${name}" added to recurring tracker!`, 'success');
+}
+
+function deleteSubscription(id) {
+  state.subscriptions = state.subscriptions.filter(s => s.id !== id);
+  localStorage.setItem('expense_tracker_subscriptions', JSON.stringify(state.subscriptions));
+  renderSubscriptions();
+  showToast('Subscription removed from tracker', 'info');
+}
+
+async function logSubscriptionToLedger(id) {
+  const sub = state.subscriptions.find(s => s.id === id);
+  if (!sub) return;
+
+  const payload = {
+    title: sub.name,
+    amount: sub.amount,
+    category: sub.category,
+    type: 'expense',
+    description: `Recurring ${sub.cycle} subscription renewal`,
+    date: new Date().toISOString()
+  };
+
+  if (state.backendConnected && state.jwtToken) {
+    try {
+      const res = await fetch(`${state.apiBase}/expenses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.jwtToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to log subscription to server');
+      }
+      showToast(`Logged "${sub.name}" (${formatCurrency(sub.amount)}) to MongoDB Ledger!`, 'success');
+      await loadTransactions();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  } else {
+    // Sandbox
+    payload._id = `tx_sub_${Date.now()}`;
+    payload.createdAt = new Date().toISOString();
+    state.transactions.unshift(payload);
+    localStorage.setItem('expense_tracker_txs', JSON.stringify(state.transactions));
+    updateMetrics();
+    renderLedgerTable();
+    renderCharts();
+    renderAnalyticsView();
+    renderBudgetPlanner();
+    showToast(`Logged "${sub.name}" (${formatCurrency(sub.amount)}) to Local Sandbox!`, 'success');
+  }
+}
+
+function clearDateFilter() {
+  const start = document.getElementById('startDateFilter');
+  const end = document.getElementById('endDateFilter');
+  if (start) start.value = '';
+  if (end) end.value = '';
+  renderLedgerTable();
+  showToast('Date range filter cleared', 'info');
+}
+
 // Toast Notifications
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toastContainer');
@@ -1653,3 +1890,4 @@ function escapeHTML(str) {
     '"': '&quot;'
   }[tag] || tag));
 }
+

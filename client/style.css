@@ -1658,9 +1658,236 @@ body {
   to { transform: translateX(0); opacity: 1; }
 }
 
+/* ========================================================
+   WEEK 9 & 10 ENHANCEMENTS: CURRENCY, SUBSCRIPTIONS, THEMES
+   ======================================================== */
+
+/* Multi-Currency Selector */
+.currency-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  color: var(--accent-cyan);
+  transition: var(--transition-smooth);
+}
+.currency-selector-wrap:hover {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px var(--accent-cyan-glow);
+}
+.currency-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+.currency-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.theme-toggle-btn:hover {
+  border-color: var(--accent-violet);
+  box-shadow: 0 0 15px var(--accent-violet-glow);
+  transform: scale(1.05);
+}
+
+/* Three-column analytics grid */
+.analytics-row.three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.15fr;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+/* Subscriptions & Fixed Outflows Card */
+.subscription-card {
+  display: flex;
+  flex-direction: column;
+}
+.subscription-scroll-wrap {
+  max-height: 290px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+.subscription-scroll-wrap::-webkit-scrollbar {
+  width: 5px;
+}
+.subscription-scroll-wrap::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+.subscription-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-smooth);
+}
+.subscription-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+.sub-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sub-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+.sub-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sub-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+}
+.sub-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sub-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent-rose);
+}
+.btn-log-sub {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.btn-log-sub:hover {
+  background: var(--accent-emerald);
+  color: #000;
+  box-shadow: 0 0 10px var(--accent-emerald-glow);
+}
+.btn-del-sub {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px;
+  transition: var(--transition-smooth);
+}
+.btn-del-sub:hover {
+  color: #fb7185;
+}
+
+/* Date Range Filter Group */
+.date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+}
+.date-picker {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  padding: 4px;
+  outline: none;
+  cursor: pointer;
+}
+.date-picker::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
+.date-sep {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.btn-clear-date {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: var(--transition-smooth);
+}
+.btn-clear-date:hover {
+  color: #fb7185;
+  background: rgba(244, 63, 94, 0.15);
+}
+
+/* Dynamic Themes */
+body.theme-ocean {
+  --bg-primary: #050b14;
+  --bg-secondary: #0a1728;
+  --bg-surface: rgba(14, 30, 54, 0.75);
+  --bg-surface-elevated: rgba(20, 44, 78, 0.85);
+  --border-focus: rgba(6, 182, 212, 0.6);
+  --accent-emerald: #06b6d4;
+  --accent-emerald-glow: rgba(6, 182, 212, 0.3);
+}
+body.theme-glass {
+  --bg-primary: #0b1120;
+  --bg-secondary: #111e38;
+  --bg-surface: rgba(255, 255, 255, 0.05);
+  --bg-surface-elevated: rgba(255, 255, 255, 0.09);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-focus: rgba(139, 92, 246, 0.6);
+  --accent-emerald: #8b5cf6;
+  --accent-emerald-glow: rgba(139, 92, 246, 0.3);
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
-  .analytics-row, .studio-grid.two-col, .api-console-grid, .docs-container {
+  .analytics-row, .analytics-row.three-col, .studio-grid.two-col, .api-console-grid, .docs-container {
     grid-template-columns: 1fr;
   }
   .event-loop-visualizer {
@@ -1677,6 +1904,10 @@ body {
     width: 100%;
     justify-content: space-around;
   }
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
   .event-loop-visualizer {
     grid-template-columns: 1fr;
   }
@@ -1687,6 +1918,9 @@ body {
   .toolbar-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+  .date-filter-group {
+    justify-content: space-between;
   }
   .search-box input {
     width: 100%;

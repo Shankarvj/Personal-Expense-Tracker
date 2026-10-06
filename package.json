@@ -6,7 +6,8 @@
   "scripts": {
     "start": "npm --prefix server start",
     "dev": "npm --prefix server run dev",
-    "server": "node server/server.js"
+    "server": "node server/server.js",
+    "test": "npm --prefix server test"
   },
   "keywords": ["expense-tracker", "mongodb", "express", "jwt", "analytics"],
   "author": "Shankar G",

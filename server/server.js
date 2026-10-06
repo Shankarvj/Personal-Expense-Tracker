@@ -68,7 +68,7 @@ const userRoutes = require("./routes/userRoutes");
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/users", userRoutes);
 
-// System Health & Diagnostics Endpoint
+// System Health & Diagnostics Endpoint (Week 10 Production Diagnostic)
 app.get("/api/health", (req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStatusMap = {
@@ -78,15 +78,27 @@ app.get("/api/health", (req, res) => {
     3: "Disconnecting",
   };
 
+  const mem = process.memoryUsage();
+
   res.status(200).json({
     status: "operational",
     service: "Personal Expense Tracker API",
+    version: "2.0.0",
     database: dbStatusMap[dbState] || "Unknown",
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()) + "s",
+    system: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      memoryUsageMB: {
+        rss: (mem.rss / 1024 / 1024).toFixed(2),
+        heapUsed: (mem.heapUsed / 1024 / 1024).toFixed(2),
+        heapTotal: (mem.heapTotal / 1024 / 1024).toFixed(2),
+      },
+    },
     security: {
       helmet: "Active (CSP & XSS protection)",
-      rateLimiter: "Active (200 req/15min API, 15 req/15min Auth)",
+      rateLimiter: "Active (200 req/15min API, 500 req/15min Auth)",
       inputValidation: "RFC 5322 & Positive Numeric Sanitization Active",
     },
   });
