@@ -193,6 +193,7 @@ function updateAuthUI() {
 function openAuthModal(tab = 'login') {
   const modal = document.getElementById('authModal');
   if (!modal) return;
+  modal.style.display = 'flex';
   modal.classList.add('active');
   switchAuthTab(tab);
   hideAuthAlert();
@@ -201,7 +202,10 @@ function openAuthModal(tab = 'login') {
 // Close Auth Modal
 function closeAuthModal() {
   const modal = document.getElementById('authModal');
-  if (modal) modal.classList.remove('active');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
   hideAuthAlert();
 }
 
@@ -218,14 +222,26 @@ function switchAuthTab(tab) {
   if (tab === 'register') {
     if (loginBtn) loginBtn.classList.remove('active');
     if (regBtn) regBtn.classList.add('active');
-    if (loginContent) loginContent.classList.remove('active');
-    if (regContent) regContent.classList.add('active');
+    if (loginContent) {
+      loginContent.classList.remove('active');
+      loginContent.style.display = 'none';
+    }
+    if (regContent) {
+      regContent.classList.add('active');
+      regContent.style.display = 'block';
+    }
     if (title) title.innerText = 'Create New Account';
   } else {
     if (loginBtn) loginBtn.classList.add('active');
     if (regBtn) regBtn.classList.remove('active');
-    if (loginContent) loginContent.classList.add('active');
-    if (regContent) regContent.classList.remove('active');
+    if (loginContent) {
+      loginContent.classList.add('active');
+      loginContent.style.display = 'block';
+    }
+    if (regContent) {
+      regContent.classList.remove('active');
+      regContent.style.display = 'none';
+    }
     if (title) title.innerText = 'Sign In to Expense Tracker';
   }
 }
@@ -233,7 +249,14 @@ function switchAuthTab(tab) {
 // Toggle User Profile Modal
 function toggleUserProfileModal() {
   const modal = document.getElementById('userProfileModal');
-  if (modal) modal.classList.toggle('active');
+  if (!modal) return;
+  if (modal.classList.contains('active')) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  } else {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+  }
 }
 
 // Show alert banner inside auth modal
