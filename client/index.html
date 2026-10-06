@@ -97,13 +97,16 @@
           <span id="themeIcon">🌙</span>
         </button>
 
-        <div class="backend-status-badge" id="backendStatusPill" title="Backend Server Connectivity">
+        <div class="backend-status-badge" id="backendStatusPill" title="Server / Database Connectivity">
           <span class="pulse-dot"></span>
           <span id="backendStatusText">Connecting...</span>
         </div>
 
-        <!-- Unauthenticated State View: Distinct Sign In & Sign Up buttons -->
+        <!-- Unauthenticated State View: Distinct Sign In, Sign Up & Demo Version buttons -->
         <div id="unauthHeaderBox" style="display: flex; align-items: center; gap: 8px;">
+          <button class="btn-demo-mode-header" onclick="launchDemoMode()" title="Launch fully functional Demo Version without connecting any database">
+            🎮 Demo Version
+          </button>
           <button class="auth-header-btn-secondary" onclick="openAuthModal('login')" title="Sign in to your account">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -124,7 +127,10 @@
 
         <!-- Authenticated State View -->
         <div id="authHeaderBox" style="display: none; align-items: center; gap: 10px;">
-          <div class="user-pill" id="userPill" onclick="toggleUserProfileModal()" title="View Profile & JWT Session">
+          <button id="resetDemoBtn" class="btn-reset-demo" onclick="resetDemoData()" style="display: none;" title="Reset demo sample data">
+            🔄 Reset Demo Data
+          </button>
+          <div class="user-pill" id="userPill" onclick="toggleUserProfileModal()" title="View Profile & Session">
             <span class="user-avatar" id="userAvatar">U</span>
             <span class="user-name" id="userNameDisplay">User</span>
             <span class="auth-role" id="authBadge">JWT Active</span>

@@ -14,10 +14,23 @@ const currencyRates = {
   'JPY': { symbol: '¥', rate: 1.82, locale: 'ja-JP', name: 'Japanese Yen' }
 };
 
+// Seeded Pre-Loaded Demo Transactions (Database-Free Standalone Engine)
+const DEFAULT_DEMO_TRANSACTIONS = [
+  { _id: 'demo_tx_1', title: 'Monthly Software Salary', amount: 65000, category: 'Salary', type: 'income', date: new Date().toISOString(), description: 'Direct monthly salary credit' },
+  { _id: 'demo_tx_2', title: 'Freelance Design Retainer', amount: 18500, category: 'Freelance', type: 'income', date: new Date(Date.now() - 86400000 * 2).toISOString(), description: 'UI/UX consultation project payout' },
+  { _id: 'demo_tx_3', title: 'Apartment Rent & Maintenance', amount: 15000, category: 'Housing', type: 'expense', date: new Date(Date.now() - 86400000 * 3).toISOString(), description: 'Monthly residential apartment lease' },
+  { _id: 'demo_tx_4', title: 'Supermarket Groceries & Pantry', amount: 4850, category: 'Food', type: 'expense', date: new Date(Date.now() - 86400000 * 4).toISOString(), description: 'Weekly groceries and kitchen supplies' },
+  { _id: 'demo_tx_5', title: 'AWS Cloud Infrastructure', amount: 2450, category: 'Utilities', type: 'expense', date: new Date(Date.now() - 86400000 * 6).toISOString(), description: 'EC2 servers & cloud database hosting' },
+  { _id: 'demo_tx_6', title: 'Fuel & Metro Travel Pass', amount: 1800, category: 'Travel', type: 'expense', date: new Date(Date.now() - 86400000 * 8).toISOString(), description: 'Daily commute and transit recharge' },
+  { _id: 'demo_tx_7', title: 'Weekend Dining & Bistro', amount: 2200, category: 'Entertainment', type: 'expense', date: new Date(Date.now() - 86400000 * 10).toISOString(), description: 'Family dinner and coffee' },
+  { _id: 'demo_tx_8', title: 'Gym & Crossfit Membership', amount: 2000, category: 'Healthcare', type: 'expense', date: new Date(Date.now() - 86400000 * 12).toISOString(), description: 'Monthly fitness center pass' }
+];
+
 // Application State
 const state = {
   activeTab: 'trackerTab',
   backendConnected: false,
+  isDemoMode: localStorage.getItem('expense_tracker_is_demo') === 'true',
   apiBase: '/api',
   currentUser: null,
   jwtToken: localStorage.getItem('auth_token') || '',
@@ -115,11 +128,83 @@ function setupNavigation() {
 // ========================================================
 // AUTHENTICATION & SESSION MANAGEMENT
 // ========================================================
+// DEMO VERSION & SANDBOX CONTROLS (DATABASE-INDEPENDENT)
+// ========================================================
+
+// Launch Offline Demo Version
+function launchDemoMode() {
+  state.isDemoMode = true;
+  localStorage.setItem('expense_tracker_is_demo', 'true');
+
+  state.currentUser = {
+    _id: 'demo_user_67890',
+    name: 'Demo Financial User',
+    email: 'demo@expensetracker.io',
+    role: 'Demo Sandbox User'
+  };
+  state.jwtToken = 'demo.eyJzdWIiOiJkZW1vX3VzZXIiLCJuYW1lIjoiRGVtbyBVc2VyIn0.mock_signature_2026';
+  localStorage.setItem('auth_token', state.jwtToken);
+  localStorage.setItem('auth_user', JSON.stringify(state.currentUser));
+
+  // Seed sample transactions if empty
+  const stored = localStorage.getItem('expense_tracker_demo_txs');
+  if (stored) {
+    try {
+      state.transactions = JSON.parse(stored);
+    } catch {
+      state.transactions = JSON.parse(JSON.stringify(DEFAULT_DEMO_TRANSACTIONS));
+    }
+  } else {
+    state.transactions = JSON.parse(JSON.stringify(DEFAULT_DEMO_TRANSACTIONS));
+  }
+  localStorage.setItem('expense_tracker_demo_txs', JSON.stringify(state.transactions));
+
+  updateAuthUI();
+  updateMetrics();
+  renderLedgerTable();
+  renderCharts();
+  renderAnalyticsView();
+  renderBudgetPlanner();
+  renderSubscriptions();
+  calculateEmergencyFund();
+
+  showToast('🎮 Demo Version Launched! Full website features active without database connection.', 'success');
+}
+
+// Reset Demo Sample Data
+function resetDemoData() {
+  state.transactions = JSON.parse(JSON.stringify(DEFAULT_DEMO_TRANSACTIONS));
+  localStorage.setItem('expense_tracker_demo_txs', JSON.stringify(state.transactions));
+
+  updateMetrics();
+  renderLedgerTable();
+  renderCharts();
+  renderAnalyticsView();
+  renderBudgetPlanner();
+  renderSubscriptions();
+  calculateEmergencyFund();
+
+  showToast('🔄 Demo sample transactions reset to initial state!', 'info');
+}
 
 // Initialize user session from localStorage and verify profile
 async function initAuth() {
+  const isDemo = localStorage.getItem('expense_tracker_is_demo') === 'true';
   const savedToken = localStorage.getItem('auth_token');
   const savedUser = localStorage.getItem('auth_user');
+
+  if (isDemo) {
+    state.isDemoMode = true;
+    state.currentUser = savedUser ? JSON.parse(savedUser) : {
+      _id: 'demo_user_67890',
+      name: 'Demo Financial User',
+      email: 'demo@expensetracker.io',
+      role: 'Demo Sandbox User'
+    };
+    state.jwtToken = savedToken || 'demo.eyJzdWIiOiJkZW1vX3VzZXIiLCJuYW1lIjoiRGVtbyBVc2VyIn0.mock_signature_2026';
+    updateAuthUI();
+    return;
+  }
 
   if (savedToken) {
     state.jwtToken = savedToken;
@@ -173,7 +258,10 @@ function updateAuthUI() {
   const userAvatar = document.getElementById('userAvatar');
   const userNameDisplay = document.getElementById('userNameDisplay');
   const authBadge = document.getElementById('authBadge');
+  const resetDemoBtn = document.getElementById('resetDemoBtn');
   const activeJwtTextarea = document.getElementById('activeJwtTextarea');
+  const statusPill = document.getElementById('backendStatusPill');
+  const statusText = document.getElementById('backendStatusText');
 
   if (state.currentUser && state.jwtToken) {
     // Authenticated state
@@ -191,9 +279,25 @@ function updateAuthUI() {
 
     if (userAvatar) userAvatar.innerText = initials || 'U';
     if (userNameDisplay) userNameDisplay.innerText = name;
-    if (authBadge) {
-      authBadge.innerText = 'Authenticated (JWT)';
-      authBadge.style.color = '#34d399';
+
+    if (state.isDemoMode) {
+      if (authBadge) {
+        authBadge.innerText = 'Demo Sandbox (Database-Free)';
+        authBadge.style.color = '#38bdf8';
+      }
+      if (resetDemoBtn) resetDemoBtn.style.display = 'inline-block';
+      if (statusPill && statusText) {
+        statusPill.style.background = 'rgba(6, 182, 212, 0.15)';
+        statusPill.style.borderColor = 'rgba(6, 182, 212, 0.4)';
+        statusPill.style.color = '#38bdf8';
+        statusText.innerText = 'Demo Sandbox Mode';
+      }
+    } else {
+      if (authBadge) {
+        authBadge.innerText = 'Authenticated (JWT)';
+        authBadge.style.color = '#34d399';
+      }
+      if (resetDemoBtn) resetDemoBtn.style.display = 'none';
     }
 
     // Profile modal details
@@ -205,15 +309,16 @@ function updateAuthUI() {
     if (profileAvatar) profileAvatar.innerText = initials || 'U';
     if (profileName) profileName.innerText = name;
     if (profileEmail) profileEmail.innerText = state.currentUser.email || '';
-    if (profileRole) profileRole.innerText = 'Active Session (JWT Bearer Protected)';
+    if (profileRole) profileRole.innerText = state.isDemoMode ? 'Demo Sandbox Session (Client-Side Validated)' : 'Active Session (JWT Bearer Protected)';
     if (activeJwtTextarea) activeJwtTextarea.value = state.jwtToken;
 
   } else {
     // Unauthenticated state
-    if (unauthBox) unauthBox.style.display = 'block';
+    if (unauthBox) unauthBox.style.display = 'flex';
     if (authBox) authBox.style.display = 'none';
+    if (resetDemoBtn) resetDemoBtn.style.display = 'none';
     if (guestBanner) guestBanner.style.display = 'flex';
-    if (activeJwtTextarea) activeJwtTextarea.value = 'No active JWT token. Please sign in or register to acquire a signed token.';
+    if (activeJwtTextarea) activeJwtTextarea.value = 'No active JWT token. Please sign in, register, or click "Demo Version" for instant database-free access.';
   }
 }
 
@@ -704,10 +809,12 @@ async function handleRegister(event) {
 function logoutUser() {
   state.jwtToken = '';
   state.currentUser = null;
+  state.isDemoMode = false;
   state.transactions = [];
 
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_user');
+  localStorage.removeItem('expense_tracker_is_demo');
 
   // Close profile and auth modals if open
   const profileModal = document.getElementById('userProfileModal');
@@ -736,24 +843,50 @@ async function checkBackendStatus() {
     if (res.ok) {
       const data = await res.json();
       state.backendConnected = true;
-      statusPill.style.background = 'rgba(16, 185, 129, 0.15)';
-      statusPill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-      statusPill.style.color = '#34d399';
-      statusText.innerText = `API Online (${data.database})`;
+      if (!state.isDemoMode) {
+        statusPill.style.background = 'rgba(16, 185, 129, 0.15)';
+        statusPill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        statusPill.style.color = '#34d399';
+        statusText.innerText = `API Online (${data.database})`;
+      }
     } else {
       throw new Error('Non-200 status');
     }
   } catch (err) {
     state.backendConnected = false;
-    statusPill.style.background = 'rgba(6, 182, 212, 0.15)';
-    statusPill.style.borderColor = 'rgba(6, 182, 212, 0.4)';
-    statusPill.style.color = '#38bdf8';
-    statusText.innerText = 'Offline Sandbox';
+    if (!state.isDemoMode) {
+      statusPill.style.background = 'rgba(6, 182, 212, 0.15)';
+      statusPill.style.borderColor = 'rgba(6, 182, 212, 0.4)';
+      statusPill.style.color = '#38bdf8';
+      statusText.innerText = 'Offline Sandbox';
+    }
   }
 }
 
-// Load Transactions (Backend or Sandbox)
+// Load Transactions (Backend or Database-Free Demo Sandbox)
 async function loadTransactions() {
+  if (state.isDemoMode) {
+    const stored = localStorage.getItem('expense_tracker_demo_txs');
+    if (stored) {
+      try {
+        state.transactions = JSON.parse(stored);
+      } catch {
+        state.transactions = JSON.parse(JSON.stringify(DEFAULT_DEMO_TRANSACTIONS));
+      }
+    } else {
+      state.transactions = JSON.parse(JSON.stringify(DEFAULT_DEMO_TRANSACTIONS));
+      localStorage.setItem('expense_tracker_demo_txs', JSON.stringify(state.transactions));
+    }
+    updateMetrics();
+    renderLedgerTable();
+    renderCharts();
+    renderAnalyticsView();
+    renderBudgetPlanner();
+    renderSubscriptions();
+    calculateEmergencyFund();
+    return;
+  }
+
   if (state.backendConnected) {
     if (state.jwtToken) {
       try {
@@ -1189,7 +1322,7 @@ function updateCategoryOptions() {
   categorySelect.innerHTML = list.map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
-// Handle Form Submission (Create or Update)
+// Handle Form Submission (Create or Update with Full Validation)
 async function handleTransactionSubmit(event) {
   event.preventDefault();
 
@@ -1201,19 +1334,57 @@ async function handleTransactionSubmit(event) {
   const date = document.getElementById('txDate').value;
   const description = document.getElementById('txDescription').value.trim();
 
-  if (!title || isNaN(amount) || amount <= 0 || !category) {
-    showToast('Please provide valid transaction details', 'error');
+  // Strict Client-Side Validation
+  if (!title || title.length < 2) {
+    showToast('Validation Error: Title must be at least 2 characters', 'error');
+    return;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    showToast('Validation Error: Amount must be a positive number greater than 0', 'error');
+    return;
+  }
+  if (!category) {
+    showToast('Validation Error: Please select a category', 'error');
+    return;
+  }
+
+  const payload = { title, amount, category, type, date: date || new Date().toISOString(), description };
+
+  // Demo Sandbox Mode Execution (Database-Free)
+  if (state.isDemoMode) {
+    if (id) {
+      const idx = state.transactions.findIndex(t => t._id === id);
+      if (idx !== -1) {
+        state.transactions[idx] = { ...state.transactions[idx], ...payload };
+        showToast('✓ Transaction updated (Demo Sandbox)', 'success');
+      }
+    } else {
+      const newEntry = {
+        _id: 'demo_tx_' + Date.now(),
+        ...payload,
+        createdAt: new Date().toISOString()
+      };
+      state.transactions.unshift(newEntry);
+      showToast('✓ New transaction recorded (Demo Sandbox)', 'success');
+    }
+
+    localStorage.setItem('expense_tracker_demo_txs', JSON.stringify(state.transactions));
+    updateMetrics();
+    renderLedgerTable();
+    renderCharts();
+    renderAnalyticsView();
+    renderBudgetPlanner();
+    calculateEmergencyFund();
+    closeTransactionModal();
     return;
   }
 
   // If backend is connected but user is not signed in, prompt authentication
   if (state.backendConnected && !state.jwtToken) {
-    showToast('Please sign in or register to record transactions to the database', 'error');
+    showToast('Please sign in or use Demo Version to record transactions', 'error');
     openAuthModal('login');
     return;
   }
-
-  const payload = { title, amount, category, type, date, description };
 
   if (state.backendConnected && state.jwtToken) {
     try {
@@ -1231,7 +1402,7 @@ async function handleTransactionSubmit(event) {
           const errData = await res.json();
           throw new Error(errData.message || 'Update failed');
         }
-        showToast('Transaction updated successfully', 'success');
+        showToast('Transaction updated successfully in database', 'success');
       } else {
         // POST create
         const res = await fetch(`${state.apiBase}/expenses`, {
@@ -1285,6 +1456,20 @@ async function handleTransactionSubmit(event) {
 // Delete Transaction
 async function deleteTransaction(id) {
   if (!confirm('Are you sure you want to delete this record?')) return;
+
+  // Demo Sandbox Mode Deletion (Database-Free)
+  if (state.isDemoMode) {
+    state.transactions = state.transactions.filter(t => t._id !== id);
+    localStorage.setItem('expense_tracker_demo_txs', JSON.stringify(state.transactions));
+    updateMetrics();
+    renderLedgerTable();
+    renderCharts();
+    renderAnalyticsView();
+    renderBudgetPlanner();
+    calculateEmergencyFund();
+    showToast('Record deleted from Demo Sandbox', 'info');
+    return;
+  }
 
   if (state.backendConnected) {
     if (!state.jwtToken) {

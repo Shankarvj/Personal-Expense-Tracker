@@ -1885,7 +1885,45 @@ body.theme-glass {
   --accent-emerald-glow: rgba(139, 92, 246, 0.3);
 }
 
-/* Distinct Header Auth Buttons */
+/* Distinct Header Auth Buttons & Demo Mode Button */
+.btn-demo-mode-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+  color: #38bdf8;
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
+}
+.btn-demo-mode-header:hover {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(139, 92, 246, 0.35));
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(6, 182, 212, 0.35);
+}
+.btn-reset-demo {
+  background: rgba(244, 63, 94, 0.12);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.btn-reset-demo:hover {
+  background: rgba(244, 63, 94, 0.25);
+  border-color: #fb7185;
+  color: #ffffff;
+}
 .auth-header-btn-secondary {
   display: flex;
   align-items: center;
