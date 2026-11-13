@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,9 +8,12 @@
   <!-- Modern Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=3.0">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/style.css?v=3.2">
 </head>
+
 <body class="theme-dark">
   <!-- Ambient background glow layers -->
   <div class="ambient-glow glow-1"></div>
@@ -22,7 +26,8 @@
     <header class="app-header">
       <div class="brand-container">
         <div class="brand-logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
             <polyline points="16 7 22 7 22 13"></polyline>
           </svg>
@@ -93,7 +98,8 @@
         </div>
 
         <!-- Week 9: Dynamic Theme Switcher -->
-        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="cycleTheme()" title="Switch Theme (Dark / Ocean / Glass)">
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="cycleTheme()"
+          title="Switch Theme (Dark / Ocean / Glass)">
           <span id="themeIcon">🌙</span>
         </button>
 
@@ -104,17 +110,20 @@
 
         <!-- Unauthenticated State View: Distinct Sign In, Sign Up & Demo Version buttons -->
         <div id="unauthHeaderBox" style="display: flex; align-items: center; gap: 8px;">
-          <button class="btn-demo-mode-header" onclick="launchDemoMode()" title="Launch fully functional Demo Version without connecting any database">
+          <button type="button" class="btn-demo-mode-header" id="headerDemoBtn" onclick="launchDemoMode()"
+            title="Launch fully functional Demo Version without connecting any database">
             🎮 Demo Version
           </button>
-          <button class="auth-header-btn-secondary" onclick="openAuthModal('login')" title="Sign in to your account">
+          <button type="button" class="auth-header-btn-secondary" id="headerSignInBtn" onclick="openAuthModal('login')"
+            title="Sign in to your account">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
             Sign In
           </button>
-          <button class="auth-header-btn-primary" onclick="openAuthModal('register')" title="Create a new account">
+          <button type="button" class="auth-header-btn-primary" id="headerSignUpBtn" onclick="openAuthModal('register')"
+            title="Create a new account">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="8.5" cy="7" r="4"></circle>
@@ -127,15 +136,18 @@
 
         <!-- Authenticated State View -->
         <div id="authHeaderBox" style="display: none; align-items: center; gap: 10px;">
-          <button id="resetDemoBtn" class="btn-reset-demo" onclick="resetDemoData()" style="display: none;" title="Reset demo sample data">
+          <button type="button" id="resetDemoBtn" class="btn-reset-demo" onclick="resetDemoData()"
+            style="display: none;" title="Reset demo sample data">
             🔄 Reset Demo Data
           </button>
-          <div class="user-pill" id="userPill" onclick="toggleUserProfileModal()" title="View Profile & Session">
+          <div class="user-pill" id="userPill" onclick="toggleUserProfileModal()" title="View Profile & Session"
+            role="button" tabindex="0"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleUserProfileModal();}">
             <span class="user-avatar" id="userAvatar">U</span>
             <span class="user-name" id="userNameDisplay">User</span>
             <span class="auth-role" id="authBadge">JWT Active</span>
           </div>
-          <button class="logout-btn" onclick="logoutUser()" title="Sign Out">
+          <button type="button" class="logout-btn" id="headerLogoutBtn" onclick="logoutUser()" title="Sign Out">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
@@ -149,6 +161,22 @@
 
     <!-- TAB 1: FINANCIAL COMMAND CENTER (EXPENSE TRACKER) -->
     <main class="tab-pane active" id="trackerTab">
+      <!-- Unauthenticated Session Notice Banner -->
+      <div class="guest-notice-banner" id="guestNoticeBanner" style="display: none;">
+        <div class="guest-notice-content">
+          <span style="font-size: 1.5rem;">🔒</span>
+          <div>
+            <h4>Sign In Required for Cloud Persistence</h4>
+            <p>Sign in with your account to persist transactions to MongoDB Atlas, or use 1-Click Demo for instant
+              access.</p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-shrink: 0;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="quickDemoLogin()">⚡ 1-Click Demo</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="openAuthModal('login')">Sign In</button>
+        </div>
+      </div>
+
       <!-- Top Metrics Dashboard -->
       <section class="metrics-grid">
         <div class="metric-card balance-card">
@@ -233,7 +261,8 @@
               <span>Subscriptions & Recurring</span>
               <span class="tag" id="subTotalMonthly">₹0 / mo</span>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="openAddSubscriptionModal()" title="Track New Recurring Subscription">+ Add Bill</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="addSubscriptionBtn"
+              onclick="openAddSubscriptionModal()" title="Track New Recurring Subscription">+ Add Bill</button>
           </div>
           <div class="subscription-scroll-wrap" id="subscriptionsContainer">
             <!-- Dynamic Subscriptions Rendered Here -->
@@ -257,15 +286,19 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              <input type="text" id="searchInput" placeholder="Search description, title..." oninput="handleSearchFilter()">
+              <input type="text" id="searchInput" placeholder="Search description, title..."
+                oninput="handleSearchFilter()">
             </div>
 
             <!-- Week 9: Date Range Filters -->
             <div class="date-filter-group" title="Filter by Date Range">
-              <input type="date" id="startDateFilter" class="select-dropdown date-picker" title="Start Date" onchange="handleSearchFilter()">
+              <input type="date" id="startDateFilter" class="select-dropdown date-picker" title="Start Date"
+                onchange="handleSearchFilter()">
               <span class="date-sep">to</span>
-              <input type="date" id="endDateFilter" class="select-dropdown date-picker" title="End Date" onchange="handleSearchFilter()">
-              <button class="btn-clear-date" id="clearDateBtn" onclick="clearDateFilter()" title="Clear Date Range">✕</button>
+              <input type="date" id="endDateFilter" class="select-dropdown date-picker" title="End Date"
+                onchange="handleSearchFilter()">
+              <button type="button" class="btn-clear-date" id="clearDateBtn" onclick="clearDateFilter()"
+                title="Clear Date Range">✕</button>
             </div>
 
             <!-- Category Filter Dropdown -->
@@ -299,7 +332,8 @@
             </select>
 
             <!-- Export CSV Button -->
-            <button class="btn btn-secondary" onclick="exportTransactionsCSV()" title="Export CSV">
+            <button type="button" class="btn btn-secondary" id="exportCsvBtn" onclick="exportTransactionsCSV()"
+              title="Export CSV">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
@@ -309,7 +343,8 @@
             </button>
 
             <!-- Print Statement Button -->
-            <button class="btn btn-secondary" onclick="printFinancialStatement()" title="Print / Export PDF Statement">
+            <button type="button" class="btn btn-secondary" id="printStatementBtn" onclick="printFinancialStatement()"
+              title="Print / Export PDF Statement">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
@@ -318,13 +353,24 @@
               Print / PDF
             </button>
 
-            <!-- Add Entry Primary Button -->
-            <button class="btn btn-primary" onclick="openTransactionModal()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <!-- Add Income Primary Button -->
+            <button type="button" class="btn btn-income" id="addIncomeBtn" onclick="openTransactionModal('income')"
+              title="Record New Income Inflow">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <polyline points="19 12 12 19 5 12"></polyline>
+              </svg>
+              + Add Income
+            </button>
+
+            <!-- Add Expense Primary Button -->
+            <button type="button" class="btn btn-expense" id="addExpenseBtn" onclick="openTransactionModal('expense')"
+              title="Record New Expense Outflow">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              Add Entry
+              + Add Expense
             </button>
           </div>
         </div>
@@ -349,8 +395,13 @@
           <div class="empty-state" id="emptyState" style="display: none;">
             <div class="empty-icon">📂</div>
             <h3>No Transactions Found</h3>
-            <p>Try adjusting your search criteria or add your first income or expense.</p>
-            <button class="btn btn-primary btn-sm" onclick="openTransactionModal()">Create New Entry</button>
+            <p>Try adjusting your search criteria or record your first income or expense.</p>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 14px;">
+              <button type="button" class="btn btn-income btn-sm" id="emptyAddIncomeBtn"
+                onclick="openTransactionModal('income')">+ Add Income</button>
+              <button type="button" class="btn btn-expense btn-sm" id="emptyAddExpenseBtn"
+                onclick="openTransactionModal('expense')">+ Add Expense</button>
+            </div>
           </div>
         </div>
       </section>
@@ -361,7 +412,8 @@
       <div class="page-hero">
         <span class="hero-badge">Data-Driven Intelligence</span>
         <h1 class="page-title">Financial Analytics & Cash Flow Reports</h1>
-        <p class="page-desc">Visual breakdown of monthly revenue trajectories, daily spending velocity, and 50/30/20 budget compliance.</p>
+        <p class="page-desc">Visual breakdown of monthly revenue trajectories, daily spending velocity, and 50/30/20
+          budget compliance.</p>
       </div>
 
       <!-- Financial Health & Velocity Metrics -->
@@ -433,7 +485,8 @@
             <!-- Needs -->
             <div class="rule-item">
               <div class="rule-info">
-                <span><strong>Essential Needs (Target: ≤ 50%)</strong><br><small class="text-muted">Housing, Food, Utilities, Healthcare</small></span>
+                <span><strong>Essential Needs (Target: ≤ 50%)</strong><br><small class="text-muted">Housing, Food,
+                    Utilities, Healthcare</small></span>
                 <span class="rule-pct" id="ruleNeedsPct">0%</span>
               </div>
               <div class="rule-bar-track">
@@ -444,7 +497,8 @@
             <!-- Wants -->
             <div class="rule-item">
               <div class="rule-info">
-                <span><strong>Discretionary Wants (Target: ≤ 30%)</strong><br><small class="text-muted">Entertainment, Shopping, Travel</small></span>
+                <span><strong>Discretionary Wants (Target: ≤ 30%)</strong><br><small class="text-muted">Entertainment,
+                    Shopping, Travel</small></span>
                 <span class="rule-pct" id="ruleWantsPct">0%</span>
               </div>
               <div class="rule-bar-track">
@@ -455,7 +509,8 @@
             <!-- Savings -->
             <div class="rule-item">
               <div class="rule-info">
-                <span><strong>Retained Savings & Surplus (Target: ≥ 20%)</strong><br><small class="text-muted">Net Balance Surplus, Investments</small></span>
+                <span><strong>Retained Savings & Surplus (Target: ≥ 20%)</strong><br><small class="text-muted">Net
+                    Balance Surplus, Investments</small></span>
                 <span class="rule-pct" id="ruleSavingsPct">0%</span>
               </div>
               <div class="rule-bar-track">
@@ -486,9 +541,10 @@
         <div>
           <span class="hero-badge">Discipline & Spending Caps</span>
           <h1 class="page-title">Category Budget Planner & Target Limits</h1>
-          <p class="page-desc">Set spending thresholds per category, monitor real-time consumption gauges, and eliminate overspending.</p>
+          <p class="page-desc">Set spending thresholds per category, monitor real-time consumption gauges, and eliminate
+            overspending.</p>
         </div>
-        <button class="btn btn-primary" onclick="openBudgetConfigModal()">
+        <button type="button" class="btn btn-primary" id="configBudgetsBtn" onclick="openBudgetConfigModal()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 20h9"></path>
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
@@ -544,7 +600,8 @@
       <div class="page-hero">
         <span class="hero-badge">Financial Engineering Suite</span>
         <h1 class="page-title">Wealth, Loan & Tax Calculators</h1>
-        <p class="page-desc">Interactive computational tools for Loan EMIs, SIP compound growth, Emergency Fund security, and Income Tax estimation.</p>
+        <p class="page-desc">Interactive computational tools for Loan EMIs, SIP compound growth, Emergency Fund
+          security, and Income Tax estimation.</p>
       </div>
 
       <div class="tools-grid">
@@ -561,7 +618,8 @@
           <div class="tool-form">
             <div class="form-group">
               <label class="form-label">Loan Principal Amount (₹):</label>
-              <input type="number" id="emiPrincipal" class="form-input" value="500000" step="5000" oninput="calculateEMI()">
+              <input type="number" id="emiPrincipal" class="form-input" value="500000" step="5000"
+                oninput="calculateEMI()">
             </div>
 
             <div class="form-row">
@@ -571,7 +629,8 @@
               </div>
               <div class="form-group flex-1">
                 <label class="form-label">Tenure (Years):</label>
-                <input type="number" id="emiTenure" class="form-input" value="5" min="1" max="30" oninput="calculateEMI()">
+                <input type="number" id="emiTenure" class="form-input" value="5" min="1" max="30"
+                  oninput="calculateEMI()">
               </div>
             </div>
 
@@ -615,7 +674,8 @@
               </div>
               <div class="form-group flex-1">
                 <label class="form-label">Time Period (Years):</label>
-                <input type="number" id="sipYears" class="form-input" value="10" min="1" max="40" oninput="calculateSIP()">
+                <input type="number" id="sipYears" class="form-input" value="10" min="1" max="40"
+                  oninput="calculateSIP()">
               </div>
             </div>
 
@@ -692,7 +752,8 @@
           <div class="tool-form">
             <div class="form-group">
               <label class="form-label">Annual Gross Income (₹):</label>
-              <input type="number" id="taxGrossIncome" class="form-input" value="1200000" step="50000" oninput="calculateTax()">
+              <input type="number" id="taxGrossIncome" class="form-input" value="1200000" step="50000"
+                oninput="calculateTax()">
             </div>
 
             <div class="tool-result-box">
@@ -771,14 +832,16 @@
             <label class="form-label">Title / Payee *</label>
             <span class="char-counter" id="txTitleCounter">0 / 100</span>
           </div>
-          <input type="text" id="txTitle" class="form-input" placeholder="e.g. Grocery Supermarket, Salary Credit" maxlength="100" required oninput="validateTxTitle(this)">
+          <input type="text" id="txTitle" class="form-input" placeholder="e.g. Grocery Supermarket, Salary Credit"
+            maxlength="100" required oninput="validateTxTitle(this)">
           <div class="input-feedback" id="txTitleFeedback"></div>
         </div>
 
         <div class="form-row">
           <div class="form-group flex-1">
             <label class="form-label">Amount *</label>
-            <input type="number" id="txAmount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required oninput="validateTxAmount(this)">
+            <input type="number" id="txAmount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required
+              oninput="validateTxAmount(this)">
             <div class="input-feedback" id="txAmountFeedback"></div>
           </div>
           <div class="form-group flex-1">
@@ -802,7 +865,8 @@
 
         <div class="form-group">
           <label class="form-label">Description / Remarks (Optional)</label>
-          <textarea id="txDescription" class="form-input" rows="2" maxlength="500" placeholder="Optional notes, receipt tags, or payment reference"></textarea>
+          <textarea id="txDescription" class="form-input" rows="2" maxlength="500"
+            placeholder="Optional notes, receipt tags, or payment reference"></textarea>
         </div>
 
         <div class="modal-footer">
@@ -823,7 +887,8 @@
             Secure JWT authentication with MongoDB Atlas synchronization
           </p>
         </div>
-        <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+        <button type="button" class="modal-close" onclick="closeAuthModal()"
+          aria-label="Close authentication modal">&times;</button>
       </div>
 
       <!-- Quick 1-Click Demo Sandbox Banner -->
@@ -832,34 +897,40 @@
           <strong>⚡ Quick Testing?</strong>
           <span>Instant 1-click test session</span>
         </div>
-        <button type="button" class="btn-demo-login" onclick="quickDemoLogin()">
+        <button type="button" class="btn-demo-login" id="quickDemoBtn" onclick="quickDemoLogin()">
           🚀 Demo Sign In
         </button>
       </div>
 
       <!-- Tab Switcher -->
-      <div class="auth-tabs-nav">
-        <button class="auth-tab-btn active" id="authTabLoginBtn" onclick="switchAuthTab('login')">Sign In</button>
-        <button class="auth-tab-btn" id="authTabRegisterBtn" onclick="switchAuthTab('register')">Create Account</button>
+      <div class="auth-tabs-nav" role="tablist">
+        <button type="button" class="auth-tab-btn active" id="authTabLoginBtn" role="tab" aria-selected="true"
+          onclick="switchAuthTab('login')">Sign In</button>
+        <button type="button" class="auth-tab-btn" id="authTabRegisterBtn" role="tab" aria-selected="false"
+          onclick="switchAuthTab('register')">Create Account</button>
       </div>
 
       <!-- Alert / Status Notice -->
-      <div class="auth-alert-box" id="authAlertBox"></div>
+      <div class="auth-alert-box" id="authAlertBox" role="alert" aria-live="assertive"></div>
 
       <!-- SIGN IN TAB -->
-      <div class="auth-tab-content active" id="tabLogin">
-        <form id="loginForm" onsubmit="handleLogin(event)" style="padding-top: 8px;">
+      <div class="auth-tab-content active" id="tabLogin" role="tabpanel">
+        <form id="loginForm" onsubmit="handleLogin(event)" novalidate style="padding-top: 8px;">
           <div class="form-group">
-            <label class="form-label">Email Address *</label>
-            <input type="email" id="loginEmail" class="form-input" placeholder="e.g. user@example.com" required autocomplete="email" oninput="validateEmailField(this, 'loginEmailFeedback')">
+            <label class="form-label" for="loginEmail">Email Address *</label>
+            <input type="email" id="loginEmail" class="form-input" placeholder="e.g. user@example.com" required
+              autocomplete="email" oninput="validateEmailField(this, 'loginEmailFeedback')">
             <div class="input-feedback" id="loginEmailFeedback"></div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Password *</label>
+            <label class="form-label" for="loginPassword">Password *</label>
             <div class="password-input-wrap">
-              <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required autocomplete="current-password">
-              <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('loginPassword', this)" title="Toggle password visibility">👁️</button>
+              <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required
+                autocomplete="current-password">
+              <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility"
+                onclick="togglePasswordVisibility('loginPassword', this)"
+                title="Toggle password visibility">👁️</button>
             </div>
           </div>
 
@@ -868,7 +939,10 @@
               <input type="checkbox" id="rememberMeCheckbox" checked>
               <span>Remember email on this browser</span>
             </label>
-            <a class="auth-forgot-link" onclick="fillDemoCredentials()">Use Demo Creds</a>
+            <a href="javascript:void(0)" class="auth-forgot-link" role="button" tabindex="0"
+              onclick="fillDemoCredentials()"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fillDemoCredentials();}">Use
+              Demo Creds</a>
           </div>
 
           <div class="modal-footer" style="margin-top: 20px;">
@@ -879,34 +953,41 @@
           </div>
 
           <div class="auth-switch-link">
-            Don't have an account? <a onclick="switchAuthTab('register')">Create an account here</a>
+            Don't have an account? <a href="javascript:void(0)" role="button" tabindex="0"
+              onclick="switchAuthTab('register')"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchAuthTab('register');}">Create
+              an account here</a>
           </div>
         </form>
       </div>
 
       <!-- REGISTER TAB -->
-      <div class="auth-tab-content" id="tabRegister">
-        <form id="registerForm" onsubmit="handleRegister(event)" style="padding-top: 8px;">
+      <div class="auth-tab-content" id="tabRegister" role="tabpanel">
+        <form id="registerForm" onsubmit="handleRegister(event)" novalidate style="padding-top: 8px;">
           <div class="form-group">
             <div style="display: flex; justify-content: space-between;">
-              <label class="form-label">Full Name *</label>
+              <label class="form-label" for="regName">Full Name *</label>
               <span class="char-counter" id="regNameCounter">0 / 50</span>
             </div>
-            <input type="text" id="regName" class="form-input" placeholder="e.g. Alex Morgan" minlength="2" maxlength="50" required autocomplete="name" oninput="validateNameField(this)">
+            <input type="text" id="regName" class="form-input" placeholder="e.g. Alex Morgan" minlength="2"
+              maxlength="50" required autocomplete="name" oninput="validateNameField(this)">
             <div class="input-feedback" id="regNameFeedback"></div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Email Address *</label>
-            <input type="email" id="regEmail" class="form-input" placeholder="e.g. alex@example.com" required autocomplete="email" oninput="validateEmailField(this, 'regEmailFeedback')">
+            <label class="form-label" for="regEmail">Email Address *</label>
+            <input type="email" id="regEmail" class="form-input" placeholder="e.g. alex@example.com" required
+              autocomplete="email" oninput="validateEmailField(this, 'regEmailFeedback')">
             <div class="input-feedback" id="regEmailFeedback"></div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Password *</label>
+            <label class="form-label" for="regPassword">Password *</label>
             <div class="password-input-wrap">
-              <input type="password" id="regPassword" class="form-input" placeholder="••••••••" minlength="6" maxlength="128" required autocomplete="new-password" oninput="validatePasswordStrengthLive(this.value)">
-              <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('regPassword', this)" title="Toggle password visibility">👁️</button>
+              <input type="password" id="regPassword" class="form-input" placeholder="••••••••" minlength="6"
+                maxlength="128" required autocomplete="new-password" oninput="validatePasswordStrengthLive(this.value)">
+              <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility"
+                onclick="togglePasswordVisibility('regPassword', this)" title="Toggle password visibility">👁️</button>
             </div>
             <!-- Live Password Strength Visualizer -->
             <div class="password-strength-container" id="passwordStrengthBox" style="display: none;">
@@ -927,10 +1008,13 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Confirm Password *</label>
+            <label class="form-label" for="regConfirmPassword">Confirm Password *</label>
             <div class="password-input-wrap">
-              <input type="password" id="regConfirmPassword" class="form-input" placeholder="••••••••" minlength="6" required autocomplete="new-password" oninput="validatePasswordMatchLive()">
-              <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('regConfirmPassword', this)" title="Toggle password visibility">👁️</button>
+              <input type="password" id="regConfirmPassword" class="form-input" placeholder="••••••••" minlength="6"
+                required autocomplete="new-password" oninput="validatePasswordMatchLive()">
+              <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility"
+                onclick="togglePasswordVisibility('regConfirmPassword', this)"
+                title="Toggle password visibility">👁️</button>
             </div>
             <div class="input-feedback" id="regConfirmFeedback"></div>
           </div>
@@ -943,7 +1027,9 @@
           </div>
 
           <div class="auth-switch-link">
-            Already registered? <a onclick="switchAuthTab('login')">Sign In here</a>
+            Already registered? <a href="javascript:void(0)" role="button" tabindex="0" onclick="switchAuthTab('login')"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();switchAuthTab('login');}">Sign
+              In here</a>
           </div>
         </form>
       </div>
@@ -974,7 +1060,9 @@
 
         <div class="auth-buttons-row">
           <button class="btn btn-primary btn-sm" onclick="copyJwtToClipboard()">Copy Token</button>
-          <button class="btn btn-sm" style="background: rgba(244, 63, 94, 0.18); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; cursor: pointer;" onclick="logoutUser()">Sign Out</button>
+          <button class="btn btn-sm"
+            style="background: rgba(244, 63, 94, 0.18); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; cursor: pointer;"
+            onclick="logoutUser()">Sign Out</button>
           <button class="btn btn-secondary btn-sm" onclick="toggleUserProfileModal()">Close</button>
         </div>
       </div>
@@ -996,7 +1084,8 @@
       <form id="subscriptionForm" onsubmit="handleAddSubscription(event)" style="padding: 24px;">
         <div class="form-group">
           <label class="form-label">Service / Provider Name *</label>
-          <input type="text" id="subName" class="form-input" placeholder="e.g. Netflix 4K, Spotify Family, AWS Cloud, JioFiber" required />
+          <input type="text" id="subName" class="form-input"
+            placeholder="e.g. Netflix 4K, Spotify Family, AWS Cloud, JioFiber" required />
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -1032,7 +1121,8 @@
         </div>
         <div class="modal-footer" style="margin-top: 24px;">
           <button type="button" class="btn btn-secondary" onclick="closeAddSubscriptionModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="subSubmitBtn" style="min-width: 150px;">Save Subscription</button>
+          <button type="submit" class="btn btn-primary" id="subSubmitBtn" style="min-width: 150px;">Save
+            Subscription</button>
         </div>
       </form>
     </div>
@@ -1042,6 +1132,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Core Application Scripts -->
-  <script src="app.js?v=3.0"></script>
+  <script src="/app.js?v=3.2"></script>
 </body>
+
 </html>

@@ -2,7 +2,7 @@
 ## Personal Expense Tracker
 **Evaluation Context:** SSS Lab Practical Assessment  
 **Testing Framework:** Automated API Testing & Manual Integration Verification  
-**Scope:** Milestone 01 through Milestone 07
+**Scope:** Milestone 01 through Milestone 10 (Full 10-Week Lab Progression)
 
 ---
 

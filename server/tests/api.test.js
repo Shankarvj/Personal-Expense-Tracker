@@ -62,6 +62,21 @@ describe('Personal Expense Tracker - Automated Integration Test Suite', () => {
   let authToken = null;
   let createdExpenseId = null;
 
+  before(async () => {
+    try {
+      await makeRequest('/api/health');
+    } catch (e) {
+      require('../server');
+      for (let i = 0; i < 25; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        try {
+          const res = await makeRequest('/api/health');
+          if (res.status === 200) break;
+        } catch (err) {}
+      }
+    }
+  });
+
   // -------------------------------------------------------------
   // Test 1: Production Health Check & Diagnostics
   // -------------------------------------------------------------
@@ -275,6 +290,86 @@ describe('Personal Expense Tracker - Automated Integration Test Suite', () => {
       headers: { Authorization: `Bearer ${authToken}` }
     });
     assert.equal(res.status, 200, 'Delete should return 200');
+    assert.equal(res.data.success, true);
+  });
+
+  // -------------------------------------------------------------
+  // Test 14: Subscriptions - Create Recurring Subscription
+  // -------------------------------------------------------------
+  let createdSubId = null;
+  test('POST /api/subscriptions - Creates a new recurring subscription', async () => {
+    const res = await makeRequest('/api/subscriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${authToken}` },
+      body: {
+        name: 'GitHub Copilot Enterprise',
+        amount: 1900,
+        category: 'Utilities',
+        cycle: 'Monthly',
+        dueDay: 10
+      }
+    });
+    assert.equal(res.status, 201, 'Creation should return 201');
+    assert.equal(res.data.success, true);
+    assert.ok(res.data.data._id, 'Should return created subscription ID');
+    createdSubId = res.data.data._id;
+  });
+
+  // -------------------------------------------------------------
+  // Test 15: Subscriptions - Get Subscriptions List
+  // -------------------------------------------------------------
+  test('GET /api/subscriptions - Retrieves subscriptions list', async () => {
+    const res = await makeRequest('/api/subscriptions', {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    assert.equal(res.status, 200, 'List should return 200');
+    assert.equal(res.data.success, true);
+    assert.ok(Array.isArray(res.data.data), 'Data should be an array');
+    assert.ok(res.data.data.some(s => s._id === createdSubId), 'Should contain created subscription');
+  });
+
+  // -------------------------------------------------------------
+  // Test 16: Subscriptions - Delete Subscription
+  // -------------------------------------------------------------
+  test('DELETE /api/subscriptions/:id - Removes recurring subscription', async () => {
+    assert.ok(createdSubId, 'Created subscription ID must exist');
+    const res = await makeRequest(`/api/subscriptions/${createdSubId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    assert.equal(res.status, 200, 'Delete should return 200');
+    assert.equal(res.data.success, true);
+  });
+
+  // -------------------------------------------------------------
+  // Test 17: Budgets - Get Default / User Budgets
+  // -------------------------------------------------------------
+  test('GET /api/budgets - Retrieves budget limits for user', async () => {
+    const res = await makeRequest('/api/budgets', {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    assert.equal(res.status, 200, 'Budgets should return 200');
+    assert.equal(res.data.success, true);
+    assert.ok(typeof res.data.data === 'object', 'Budget data should be an object mapping');
+    assert.ok('Food' in res.data.data, 'Should contain Food budget');
+  });
+
+  // -------------------------------------------------------------
+  // Test 18: Budgets - Save / Update Budget Limits
+  // -------------------------------------------------------------
+  test('PUT /api/budgets - Updates category budget caps', async () => {
+    const res = await makeRequest('/api/budgets', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${authToken}` },
+      body: {
+        budgets: {
+          Food: 9500,
+          Housing: 16000,
+          Travel: 3500
+        }
+      }
+    });
+    assert.equal(res.status, 200, 'Save budgets should return 200');
     assert.equal(res.data.success, true);
   });
 });

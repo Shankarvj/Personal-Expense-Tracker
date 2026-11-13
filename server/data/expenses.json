@@ -1,0 +1,98 @@
+[
+  {
+    "_id": "exp_001",
+    "title": "Monthly Software Engineering Salary",
+    "amount": 65000,
+    "category": "Salary",
+    "type": "income",
+    "description": "Direct salary transfer for current cycle",
+    "date": "2026-11-13T10:30:53.792Z",
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.792Z",
+    "updatedAt": "2026-11-13T10:30:53.792Z"
+  },
+  {
+    "_id": "exp_002",
+    "title": "UI/UX Consultation & Development Retainer",
+    "amount": 18500,
+    "category": "Freelance",
+    "type": "income",
+    "description": "Client web design milestone payout",
+    "date": "2026-11-11T10:30:53.792Z",
+    "user": "demo_user_001",
+    "createdAt": "2026-11-11T10:30:53.792Z",
+    "updatedAt": "2026-11-11T10:30:53.792Z"
+  },
+  {
+    "_id": "exp_003",
+    "title": "Apartment Residential Lease",
+    "amount": 15000,
+    "category": "Housing",
+    "type": "expense",
+    "description": "Monthly apartment rent and maintenance fee",
+    "date": "2026-11-10T10:30:53.792Z",
+    "user": "demo_user_001",
+    "createdAt": "2026-11-10T10:30:53.792Z",
+    "updatedAt": "2026-11-10T10:30:53.792Z"
+  },
+  {
+    "_id": "exp_004",
+    "title": "Supermarket Groceries & Supplies",
+    "amount": 4850,
+    "category": "Food",
+    "type": "expense",
+    "description": "Pantry restocking and fresh groceries",
+    "date": "2026-11-09T10:30:53.792Z",
+    "user": "demo_user_001",
+    "createdAt": "2026-11-09T10:30:53.792Z",
+    "updatedAt": "2026-11-09T10:30:53.792Z"
+  },
+  {
+    "_id": "exp_005",
+    "title": "Cloud Infrastructure & Server Hosting",
+    "amount": 2450,
+    "category": "Utilities",
+    "type": "expense",
+    "description": "Monthly database clusters and cloud instances",
+    "date": "2026-11-07T10:30:53.792Z",
+    "user": "demo_user_001",
+    "createdAt": "2026-11-07T10:30:53.792Z",
+    "updatedAt": "2026-11-07T10:30:53.792Z"
+  },
+  {
+    "_id": "exp_006",
+    "title": "Monthly Transit & Fuel Card Recharge",
+    "amount": 1800,
+    "category": "Travel",
+    "type": "expense",
+    "description": "Public transit smartcard and travel pass",
+    "date": "2026-11-05T10:30:53.792Z",
+    "user": "demo_user_001",
+    "createdAt": "2026-11-05T10:30:53.792Z",
+    "updatedAt": "2026-11-05T10:30:53.792Z"
+  },
+  {
+    "_id": "exp_007",
+    "title": "Weekend Family Dining & Coffee",
+    "amount": 2200,
+    "category": "Entertainment",
+    "type": "expense",
+    "description": "Dinner bistro and recreational leisure",
+    "date": "2026-11-03T10:30:53.792Z",
+    "user": "demo_user_001",
+    "createdAt": "2026-11-03T10:30:53.792Z",
+    "updatedAt": "2026-11-03T10:30:53.792Z"
+  },
+  {
+    "_id": "exp_008",
+    "title": "Fitness Center & Gym Membership",
+    "amount": 2000,
+    "category": "Healthcare",
+    "type": "expense",
+    "description": "Monthly fitness pass",
+    "date": "2026-11-01T10:30:53.792Z",
+    "user": "demo_user_001",
+    "createdAt": "2026-11-01T10:30:53.792Z",
+    "updatedAt": "2026-11-01T10:30:53.792Z"
+  }
+]

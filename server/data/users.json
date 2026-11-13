@@ -1,0 +1,10 @@
+[
+  {
+    "_id": "demo_user_001",
+    "name": "Demo Financial User",
+    "email": "demo@expensetracker.io",
+    "password": "$2b$10$yzNlBtO9grhPBPjzVSjaf.hCLr6z1/dV.d8Flc9CYczXmGmB3A0qG",
+    "createdAt": "2026-11-13T10:30:53.787Z",
+    "updatedAt": "2026-11-13T10:30:53.790Z"
+  }
+]

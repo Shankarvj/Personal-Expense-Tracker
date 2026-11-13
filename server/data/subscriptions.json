@@ -1,0 +1,57 @@
+[
+  {
+    "_id": "sub_001",
+    "name": "Netflix 4K Ultra",
+    "amount": 649,
+    "category": "Entertainment",
+    "cycle": "Monthly",
+    "dueDay": 15,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.793Z",
+    "updatedAt": "2026-11-13T10:30:53.794Z"
+  },
+  {
+    "_id": "sub_002",
+    "name": "Spotify Premium Family",
+    "amount": 179,
+    "category": "Entertainment",
+    "cycle": "Monthly",
+    "dueDay": 28,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.794Z",
+    "updatedAt": "2026-11-13T10:30:53.794Z"
+  },
+  {
+    "_id": "sub_003",
+    "name": "AWS Cloud Infrastructure",
+    "amount": 2450,
+    "category": "Utilities",
+    "cycle": "Monthly",
+    "dueDay": 5,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.794Z",
+    "updatedAt": "2026-11-13T10:30:53.794Z"
+  },
+  {
+    "_id": "sub_004",
+    "name": "JioFiber Broadband",
+    "amount": 999,
+    "category": "Utilities",
+    "cycle": "Monthly",
+    "dueDay": 20,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.794Z",
+    "updatedAt": "2026-11-13T10:30:53.794Z"
+  },
+  {
+    "_id": "sub_005",
+    "name": "CultFit Gym & Health",
+    "amount": 2000,
+    "category": "Healthcare",
+    "cycle": "Monthly",
+    "dueDay": 1,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.794Z",
+    "updatedAt": "2026-11-13T10:30:53.794Z"
+  }
+]

@@ -22,7 +22,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'", "http://localhost:5000", "https://*"],
+        connectSrc: ["'self'", "http://localhost:*", "http://127.0.0.1:*", "https://*"],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -64,19 +64,18 @@ app.use(express.static(path.join(__dirname, "public")));
 // Routes
 const expenseRoutes = require("./routes/expenseRoutes");
 const userRoutes = require("./routes/userRoutes");
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
+const budgetRoutes = require("./routes/budgetRoutes");
 
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/budgets", budgetRoutes);
 
 // System Health & Diagnostics Endpoint (Week 10 Production Diagnostic)
 app.get("/api/health", (req, res) => {
   const dbState = mongoose.connection.readyState;
-  const dbStatusMap = {
-    0: "Disconnected",
-    1: "Connected",
-    2: "Connecting",
-    3: "Disconnecting",
-  };
+  const dbStatus = dbState === 1 ? "MongoDB Connected" : "Local Persistent Storage (Active)";
 
   const mem = process.memoryUsage();
 
@@ -84,7 +83,7 @@ app.get("/api/health", (req, res) => {
     status: "operational",
     service: "Personal Expense Tracker API",
     version: "2.0.0",
-    database: dbStatusMap[dbState] || "Unknown",
+    database: dbStatus,
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()) + "s",
     system: {
@@ -124,13 +123,30 @@ app.get("/api", (req, res) => {
   });
 });
 
-// Fallback to static app or status if root requested
-app.get("/", (req, res, next) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"), (err) => {
-    if (err) {
-      res.send("Personal Expense Tracker API Running. Public frontend not loaded.");
-    }
+// SPA Client Navigation Routes & Fallback (Handles /dashboard, /analytics, /budget, /tools, /login, /register, and deep links)
+const spaRoutes = ["/", "/dashboard", "/analytics", "/budget", "/tools", "/login", "/register", "/signup", "/expenses", "/ledger"];
+spaRoutes.forEach((route) => {
+  app.get(route, (req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.sendFile(path.join(__dirname, "public", "index.html"), (err) => {
+      if (err) {
+        res.status(500).send("Personal Expense Tracker API Running. Public frontend not loaded.");
+      }
+    });
   });
+});
+
+// SPA Deep-link fallback (only for non-file, non-API GET requests)
+app.use((req, res, next) => {
+  if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.includes(".")) {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    return res.sendFile(path.join(__dirname, "public", "index.html"), (err) => {
+      if (err) {
+        next();
+      }
+    });
+  }
+  next();
 });
 
 // Centralized Error Middleware
@@ -138,6 +154,9 @@ app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+module.exports = app;
+module.exports.server = server;

@@ -1,0 +1,66 @@
+[
+  {
+    "_id": "bgt_001",
+    "category": "Food",
+    "amount": 8000,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.795Z",
+    "updatedAt": "2026-11-13T10:30:53.795Z"
+  },
+  {
+    "_id": "bgt_002",
+    "category": "Housing",
+    "amount": 15000,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.795Z",
+    "updatedAt": "2026-11-13T10:30:53.795Z"
+  },
+  {
+    "_id": "bgt_003",
+    "category": "Travel",
+    "amount": 3000,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.795Z",
+    "updatedAt": "2026-11-13T10:30:53.795Z"
+  },
+  {
+    "_id": "bgt_004",
+    "category": "Utilities",
+    "amount": 3500,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.795Z",
+    "updatedAt": "2026-11-13T10:30:53.795Z"
+  },
+  {
+    "_id": "bgt_005",
+    "category": "Healthcare",
+    "amount": 2500,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.795Z",
+    "updatedAt": "2026-11-13T10:30:53.795Z"
+  },
+  {
+    "_id": "bgt_006",
+    "category": "Entertainment",
+    "amount": 3000,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.795Z",
+    "updatedAt": "2026-11-13T10:30:53.795Z"
+  },
+  {
+    "_id": "bgt_007",
+    "category": "Shopping",
+    "amount": 4000,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.795Z",
+    "updatedAt": "2026-11-13T10:30:53.795Z"
+  },
+  {
+    "_id": "bgt_008",
+    "category": "Education",
+    "amount": 5000,
+    "user": "demo_user_001",
+    "createdAt": "2026-11-13T10:30:53.795Z",
+    "updatedAt": "2026-11-13T10:30:53.795Z"
+  }
+]

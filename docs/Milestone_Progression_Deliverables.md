@@ -3,7 +3,7 @@
 **Repository:** `expense-tracker`  
 **Author:** Shankar G  
 **Academic Module:** SSS Lab — Full Stack Development Laboratory  
-**Coverage Scope:** Milestone 01 through Milestone 07
+**Coverage Scope:** Milestone 01 through Milestone 10 (Complete 10-Week Lab Progression)
 
 ---
 

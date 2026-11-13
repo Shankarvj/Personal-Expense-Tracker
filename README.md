@@ -88,32 +88,48 @@ expense-tracker/
 
 ---
 
-## 🚀 Quick Start Guide
+## 🚀 Quick Start Guide (Lecturer Demonstration)
 
-### Prerequisites
-* [Node.js](https://nodejs.org/) (v16.x or higher)
-* [npm](https://www.npmjs.com/)
+### Option A: 1-Click Windows Launcher (Easiest)
+Simply double-click:
+```
+RUN_EXPENSE_TRACKER.bat
+```
+*(Located in the project root folder. It starts the server and opens your web browser to `http://localhost:5000` automatically.)*
 
-### 1. Run the Backend Server
+### Option B: From VS Code Terminal
+1. Open VS Code in the project folder.
+2. Open the integrated terminal (`Ctrl + \``).
+3. Run the following commands:
 ```powershell
 cd "expense-tracker\server"
 npm start
 ```
-*The server will start on `http://localhost:5000` and connect to MongoDB Atlas.*
-
-### 2. Access the Application
-Open your browser and navigate to:
+4. Open your browser at:
 ```
 http://localhost:5000
 ```
+
+### Option C: VS Code Shortcut
+- Press `Ctrl + Shift + B` (or menu `Terminal -> Run Build Task...`) and select **"Run Expense Tracker (Server & Frontend)"**.
+- Or press `F5` to launch in Debug mode.
+
+---
+
+## 🔑 Demo Account Credentials
+- **Email:** `demo@expensetracker.io`
+- **Password:** `DemoPassword123!`
+- **One-Click Sign In:** Click **"Sign In"** in the top navigation, then click the **"🚀 Demo Sign In"** button to log in instantly.
+- **Offline / Sandbox Access:** Click the **"Demo Version"** button in the header or the guest banner to explore all features without a database.
 
 ---
 
 ## 🧪 Automated Testing
 
-Run the verification test suite to check all endpoints:
+Run the automated integration test suite covering 18 test cases (Health, Auth, Expenses CRUD, Income, Subscriptions CRUD, Budgets):
 ```powershell
-node -e "require('./server/server.js');"
+cd "expense-tracker\server"
+npm test
 ```
 
 ---

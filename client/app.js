@@ -31,7 +31,11 @@ const state = {
   activeTab: 'trackerTab',
   backendConnected: false,
   isDemoMode: localStorage.getItem('expense_tracker_is_demo') === 'true',
-  apiBase: '/api',
+  isAuthSubmitting: false,
+  pendingTransaction: null,
+  apiBase: (typeof window !== 'undefined' && (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '5000')))
+    ? 'http://localhost:5000/api'
+    : '/api',
   currentUser: null,
   jwtToken: localStorage.getItem('auth_token') || '',
   currentCurrency: localStorage.getItem('expense_tracker_currency') || 'INR',
@@ -87,42 +91,136 @@ document.addEventListener('DOMContentLoaded', async () => {
   setTodayDateInput();
   initCalculators();
   renderSubscriptions();
+  setupModalDismissListeners();
+  setupButtonActionListeners();
   await checkBackendStatus();
   await initAuth();
   await loadTransactions();
+  await loadSubscriptions();
+  await loadBudgets();
   renderAnalyticsView();
   renderBudgetPlanner();
+  initRouter();
 });
 
-// Setup Main Navigation Tabs
+// Tab & Route Mapping Configuration
+const tabRoutes = {
+  'trackerTab': '/dashboard',
+  'analyticsTab': '/analytics',
+  'budgetTab': '/budget',
+  'toolsTab': '/tools'
+};
+
+const routeToTab = {
+  '/': 'trackerTab',
+  '/dashboard': 'trackerTab',
+  '/tracker': 'trackerTab',
+  '/ledger': 'trackerTab',
+  '/expenses': 'trackerTab',
+  '/analytics': 'analyticsTab',
+  '/insights': 'analyticsTab',
+  '/budget': 'budgetTab',
+  '/budgets': 'budgetTab',
+  '/tools': 'toolsTab',
+  '/calculator': 'toolsTab',
+  '/calculators': 'toolsTab'
+};
+
+function navigateToTab(tabId, pushHistory = true) {
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+  const tabBtn = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
+
+  const pane = document.getElementById(tabId);
+  if (pane) pane.classList.add('active');
+  state.activeTab = tabId;
+
+  if (tabId === 'trackerTab') {
+    renderLedgerTable();
+    renderCharts();
+  } else if (tabId === 'analyticsTab') {
+    renderAnalyticsView();
+  } else if (tabId === 'budgetTab') {
+    renderBudgetPlanner();
+  } else if (tabId === 'toolsTab') {
+    calculateEMI();
+    calculateSIP();
+    calculateEmergencyFund();
+    calculateTax();
+  }
+
+  const targetPath = tabRoutes[tabId] || '/dashboard';
+  if (pushHistory && window.location.pathname !== targetPath) {
+    try {
+      history.pushState({ tabId }, '', targetPath);
+    } catch (e) {
+      window.location.hash = targetPath;
+    }
+  }
+}
+
+// Client SPA Router (Deep linking, direct URLs, browser history, & 404 handling)
+function initRouter() {
+  function handleLocation() {
+    let path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase().replace(/^#\/?/, '/');
+    if (hash && hash !== '/') {
+      path = hash;
+    }
+
+    // Modal Authentication Routes
+    if (path === '/login') {
+      navigateToTab('trackerTab', false);
+      openAuthModal('login');
+      return;
+    }
+    if (path === '/register' || path === '/signup') {
+      navigateToTab('trackerTab', false);
+      openAuthModal('register');
+      return;
+    }
+
+    if (routeToTab[path]) {
+      navigateToTab(routeToTab[path], false);
+    } else {
+      // Graceful fallback for non-existing routes
+      navigateToTab('trackerTab', true);
+    }
+  }
+
+  window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.tabId) {
+      navigateToTab(e.state.tabId, false);
+    } else {
+      handleLocation();
+    }
+  });
+
+  window.addEventListener('hashchange', handleLocation);
+
+  // Trigger initial route match
+  handleLocation();
+}
+
+// Setup Main Navigation Tabs Click Events
 function setupNavigation() {
   const tabs = document.querySelectorAll('.nav-tab');
   tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-
-      tab.classList.add('active');
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
       const targetId = tab.getAttribute('data-tab');
-      const pane = document.getElementById(targetId);
-      if (pane) pane.classList.add('active');
-      state.activeTab = targetId;
-
-      if (targetId === 'trackerTab') {
-        renderLedgerTable();
-        renderCharts();
-      } else if (targetId === 'analyticsTab') {
-        renderAnalyticsView();
-      } else if (targetId === 'budgetTab') {
-        renderBudgetPlanner();
-      } else if (targetId === 'toolsTab') {
-        calculateEMI();
-        calculateSIP();
-        calculateEmergencyFund();
-        calculateTax();
-      }
+      navigateToTab(targetId, true);
     });
   });
+
+  const brand = document.querySelector('.brand-container');
+  if (brand) {
+    brand.style.cursor = 'pointer';
+    brand.addEventListener('click', () => navigateToTab('trackerTab', true));
+  }
 }
 
 // ========================================================
@@ -192,16 +290,17 @@ async function initAuth() {
   const isDemo = localStorage.getItem('expense_tracker_is_demo') === 'true';
   const savedToken = localStorage.getItem('auth_token');
   const savedUser = localStorage.getItem('auth_user');
+  const hasLoggedOut = localStorage.getItem('has_logged_out') === 'true';
 
   if (isDemo) {
     state.isDemoMode = true;
     state.currentUser = savedUser ? JSON.parse(savedUser) : {
-      _id: 'demo_user_67890',
+      _id: 'demo_user_001',
       name: 'Demo Financial User',
       email: 'demo@expensetracker.io',
       role: 'Demo Sandbox User'
     };
-    state.jwtToken = savedToken || 'demo.eyJzdWIiOiJkZW1vX3VzZXIiLCJuYW1lIjoiRGVtbyBVc2VyIn0.mock_signature_2026';
+    state.jwtToken = savedToken || 'demo_jwt_token';
     updateAuthUI();
     return;
   }
@@ -231,17 +330,23 @@ async function initAuth() {
             localStorage.setItem('auth_user', JSON.stringify(json.user));
           }
         } else {
-          // Token expired or invalid
-          console.warn('JWT session expired or invalid. Resetting credentials.');
-          state.jwtToken = '';
-          state.currentUser = null;
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
+          // Token expired, if demo user auto-renew, else clear
+          if (state.currentUser && state.currentUser.email === 'demo@expensetracker.io') {
+            await quickDemoLogin();
+          } else {
+            state.jwtToken = '';
+            state.currentUser = null;
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+          }
         }
       } catch (err) {
         console.warn('Could not verify profile with server:', err);
       }
     }
+  } else if (!hasLoggedOut && state.backendConnected) {
+    // Fresh launch: Auto-authenticate into verified demo session for immediate readiness
+    await quickDemoLogin();
   } else {
     state.jwtToken = '';
     state.currentUser = null;
@@ -282,19 +387,20 @@ function updateAuthUI() {
 
     if (state.isDemoMode) {
       if (authBadge) {
-        authBadge.innerText = 'Demo Sandbox (Database-Free)';
+        authBadge.innerText = 'Demo Sandbox';
         authBadge.style.color = '#38bdf8';
       }
-      if (resetDemoBtn) resetDemoBtn.style.display = 'inline-block';
+      if (resetDemoBtn) resetDemoBtn.style.display = 'inline-flex';
       if (statusPill && statusText) {
         statusPill.style.background = 'rgba(6, 182, 212, 0.15)';
         statusPill.style.borderColor = 'rgba(6, 182, 212, 0.4)';
         statusPill.style.color = '#38bdf8';
-        statusText.innerText = 'Demo Sandbox Mode';
+        statusText.innerText = 'Demo Sandbox';
+        statusPill.title = 'Demo Sandbox Mode (Database-Free)';
       }
     } else {
       if (authBadge) {
-        authBadge.innerText = 'Authenticated (JWT)';
+        authBadge.innerText = 'JWT Active';
         authBadge.style.color = '#34d399';
       }
       if (resetDemoBtn) resetDemoBtn.style.display = 'none';
@@ -322,14 +428,256 @@ function updateAuthUI() {
   }
 }
 
+// Dismiss Modals via Backdrop Click and Escape Key
+function setupModalDismissListeners() {
+  const authModal = document.getElementById('authModal');
+  if (authModal) {
+    authModal.addEventListener('click', (e) => {
+      if (e.target === authModal) closeAuthModal();
+    });
+  }
+  const userProfileModal = document.getElementById('userProfileModal');
+  if (userProfileModal) {
+    userProfileModal.addEventListener('click', (e) => {
+      if (e.target === userProfileModal) toggleUserProfileModal();
+    });
+  }
+  const txModal = document.getElementById('transactionModalOverlay');
+  if (txModal) {
+    txModal.addEventListener('click', (e) => {
+      if (e.target === txModal) closeTransactionModal();
+    });
+  }
+  const budgetModal = document.getElementById('budgetConfigModal');
+  if (budgetModal) {
+    budgetModal.addEventListener('click', (e) => {
+      if (e.target === budgetModal) closeBudgetConfigModal();
+    });
+  }
+  const subModal = document.getElementById('subscriptionModal');
+  if (subModal) {
+    subModal.addEventListener('click', (e) => {
+      if (e.target === subModal) closeAddSubscriptionModal();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAuthModal();
+      closeTransactionModal();
+      closeBudgetConfigModal();
+      closeAddSubscriptionModal();
+      const profileModal = document.getElementById('userProfileModal');
+      if (profileModal && profileModal.classList.contains('active')) {
+        toggleUserProfileModal();
+      }
+    }
+  });
+}
+
+// Direct Synchronous Event Listener Bindings for 100% Reliable Interactions
+function setupButtonActionListeners() {
+  // Add Income primary button
+  const addIncomeBtn = document.getElementById('addIncomeBtn');
+  if (addIncomeBtn) {
+    addIncomeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openTransactionModal('income');
+    });
+  }
+
+  // Add Expense primary button
+  const addExpenseBtn = document.getElementById('addExpenseBtn');
+  if (addExpenseBtn) {
+    addExpenseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openTransactionModal('expense');
+    });
+  }
+
+  // Empty state buttons
+  const emptyIncomeBtn = document.getElementById('emptyAddIncomeBtn');
+  if (emptyIncomeBtn) {
+    emptyIncomeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openTransactionModal('income');
+    });
+  }
+  const emptyExpenseBtn = document.getElementById('emptyAddExpenseBtn');
+  if (emptyExpenseBtn) {
+    emptyExpenseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openTransactionModal('expense');
+    });
+  }
+
+  // Add Subscription button
+  const addSubBtn = document.getElementById('addSubscriptionBtn');
+  if (addSubBtn) {
+    addSubBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openAddSubscriptionModal();
+    });
+  }
+
+  // Configure Budgets button
+  const configBudgetsBtn = document.getElementById('configBudgetsBtn');
+  if (configBudgetsBtn) {
+    configBudgetsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openBudgetConfigModal();
+    });
+  }
+
+  // Export CSV button
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      exportTransactionsCSV();
+    });
+  }
+
+  // Print Statement button
+  const printBtn = document.getElementById('printStatementBtn');
+  if (printBtn) {
+    printBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      printFinancialStatement();
+    });
+  }
+
+  // Clear Date Filter button
+  const clearDateBtn = document.getElementById('clearDateBtn');
+  if (clearDateBtn) {
+    clearDateBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      clearDateFilter();
+    });
+  }
+
+  // Search & Filter controls
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) searchInput.addEventListener('input', handleSearchFilter);
+
+  const catFilter = document.getElementById('categoryFilter');
+  if (catFilter) catFilter.addEventListener('change', handleSearchFilter);
+
+  const typeFilter = document.getElementById('typeFilter');
+  if (typeFilter) typeFilter.addEventListener('change', handleSearchFilter);
+
+  const sortFilter = document.getElementById('sortFilter');
+  if (sortFilter) sortFilter.addEventListener('change', handleSearchFilter);
+
+  const startDate = document.getElementById('startDateFilter');
+  if (startDate) startDate.addEventListener('change', handleSearchFilter);
+
+  const endDate = document.getElementById('endDateFilter');
+  if (endDate) endDate.addEventListener('change', handleSearchFilter);
+
+  // Currency select
+  const currSelect = document.getElementById('globalCurrencySelect');
+  if (currSelect) {
+    currSelect.addEventListener('change', (e) => {
+      changeCurrency(e.target.value);
+    });
+  }
+
+  // Theme toggle
+  const themeToggle = document.getElementById('themeToggleBtn');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      cycleTheme();
+    });
+  }
+
+  // Header Sign In / Sign Up / Demo Version
+  const headerSignInBtn = document.getElementById('headerSignInBtn');
+  if (headerSignInBtn) {
+    headerSignInBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openAuthModal('login');
+    });
+  }
+  const headerSignUpBtn = document.getElementById('headerSignUpBtn');
+  if (headerSignUpBtn) {
+    headerSignUpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openAuthModal('register');
+    });
+  }
+  const headerDemoBtn = document.getElementById('headerDemoBtn');
+  if (headerDemoBtn) {
+    headerDemoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      launchDemoMode();
+    });
+  }
+  const resetDemoBtn = document.getElementById('resetDemoBtn');
+  if (resetDemoBtn) {
+    resetDemoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      resetDemoData();
+    });
+  }
+
+  // Logout button
+  const logoutBtn = document.getElementById('headerLogoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      logoutUser();
+    });
+  }
+
+  // User Profile Pill
+  const userPill = document.getElementById('userPill');
+  if (userPill) {
+    userPill.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleUserProfileModal();
+    });
+  }
+}
+
 // Open Auth Modal (Login / Register)
 function openAuthModal(tab = 'login') {
   const modal = document.getElementById('authModal');
   if (!modal) return;
-  modal.style.display = 'flex';
   modal.classList.add('active');
   switchAuthTab(tab);
   hideAuthAlert();
+
+  try {
+    const route = `/${tab}`;
+    if (window.location.pathname !== route && window.location.hash !== `#${route}`) {
+      history.pushState({ authModal: true, tab }, '', route);
+    }
+  } catch (e) {}
+
+  const rememberedEmail = localStorage.getItem('remembered_email');
+  const loginEmail = document.getElementById('loginEmail');
+  const rememberCheck = document.getElementById('rememberMeCheckbox');
+  if (rememberedEmail && loginEmail && !loginEmail.value) {
+    loginEmail.value = rememberedEmail;
+    if (rememberCheck) rememberCheck.checked = true;
+    validateEmailField(loginEmail, 'loginEmailFeedback');
+  }
+
+  // Set focus
+  setTimeout(() => {
+    if (tab === 'register') {
+      const regName = document.getElementById('regName');
+      if (regName) regName.focus();
+    } else {
+      if (loginEmail && loginEmail.value) {
+        const loginPass = document.getElementById('loginPassword');
+        if (loginPass) loginPass.focus();
+      } else if (loginEmail) {
+        loginEmail.focus();
+      }
+    }
+  }, 60);
 }
 
 // Close Auth Modal
@@ -337,9 +685,41 @@ function closeAuthModal() {
   const modal = document.getElementById('authModal');
   if (modal) {
     modal.classList.remove('active');
-    modal.style.display = 'none';
+    modal.style.display = '';
   }
+  state.isAuthSubmitting = false;
   hideAuthAlert();
+
+  const currentTabRoute = tabRoutes[state.activeTab] || '/dashboard';
+  try {
+    if (window.location.pathname === '/login' || window.location.pathname === '/register' || window.location.pathname === '/signup') {
+      history.pushState({ tabId: state.activeTab }, '', currentTabRoute);
+    }
+  } catch (e) {}
+
+  // Reset button states
+  const loginBtn = document.getElementById('loginSubmitBtn');
+  if (loginBtn) {
+    loginBtn.disabled = false;
+    loginBtn.innerText = 'Sign In';
+  }
+  const regBtn = document.getElementById('registerSubmitBtn');
+  if (regBtn) {
+    regBtn.disabled = false;
+    regBtn.innerText = 'Register Account';
+  }
+
+  // Clear passwords and feedback highlights
+  const lp = document.getElementById('loginPassword');
+  if (lp) lp.value = '';
+  const rp = document.getElementById('regPassword');
+  if (rp) rp.value = '';
+  const rcp = document.getElementById('regConfirmPassword');
+  if (rcp) rcp.value = '';
+
+  document.querySelectorAll('#authModal .form-input').forEach(inp => {
+    inp.classList.remove('input-error');
+  });
 }
 
 // Switch between Login and Register tabs
@@ -351,10 +731,19 @@ function switchAuthTab(tab) {
   const title = document.getElementById('authModalTitle');
 
   hideAuthAlert();
+  document.querySelectorAll('#authModal .form-input').forEach(inp => {
+    inp.classList.remove('input-error');
+  });
 
   if (tab === 'register') {
-    if (loginBtn) loginBtn.classList.remove('active');
-    if (regBtn) regBtn.classList.add('active');
+    if (loginBtn) {
+      loginBtn.classList.remove('active');
+      loginBtn.setAttribute('aria-selected', 'false');
+    }
+    if (regBtn) {
+      regBtn.classList.add('active');
+      regBtn.setAttribute('aria-selected', 'true');
+    }
     if (loginContent) {
       loginContent.classList.remove('active');
       loginContent.style.display = 'none';
@@ -364,9 +753,20 @@ function switchAuthTab(tab) {
       regContent.style.display = 'block';
     }
     if (title) title.innerText = 'Create New Account';
+
+    setTimeout(() => {
+      const regName = document.getElementById('regName');
+      if (regName) regName.focus();
+    }, 50);
   } else {
-    if (loginBtn) loginBtn.classList.add('active');
-    if (regBtn) regBtn.classList.remove('active');
+    if (loginBtn) {
+      loginBtn.classList.add('active');
+      loginBtn.setAttribute('aria-selected', 'true');
+    }
+    if (regBtn) {
+      regBtn.classList.remove('active');
+      regBtn.setAttribute('aria-selected', 'false');
+    }
     if (loginContent) {
       loginContent.classList.add('active');
       loginContent.style.display = 'block';
@@ -376,6 +776,22 @@ function switchAuthTab(tab) {
       regContent.style.display = 'none';
     }
     if (title) title.innerText = 'Sign In to Expense Tracker';
+
+    const rememberedEmail = localStorage.getItem('remembered_email');
+    const loginEmail = document.getElementById('loginEmail');
+    if (rememberedEmail && loginEmail && !loginEmail.value) {
+      loginEmail.value = rememberedEmail;
+      validateEmailField(loginEmail, 'loginEmailFeedback');
+    }
+
+    setTimeout(() => {
+      if (loginEmail && loginEmail.value) {
+        const lp = document.getElementById('loginPassword');
+        if (lp) lp.focus();
+      } else if (loginEmail) {
+        loginEmail.focus();
+      }
+    }, 50);
   }
 }
 
@@ -387,10 +803,12 @@ function togglePasswordVisibility(inputId, btnEl) {
     input.type = 'text';
     btnEl.innerText = '🙈';
     btnEl.title = 'Hide password';
+    btnEl.setAttribute('aria-label', 'Hide password');
   } else {
     input.type = 'password';
     btnEl.innerText = '👁️';
     btnEl.title = 'Show password';
+    btnEl.setAttribute('aria-label', 'Show password');
   }
 }
 
@@ -400,20 +818,25 @@ function validateEmailField(inputEl, feedbackId) {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   const val = inputEl.value.trim();
 
-  if (!feedback) return;
+  if (!feedback) return true;
 
   if (val.length === 0) {
     feedback.className = 'input-feedback';
     feedback.innerText = '';
-    return;
+    inputEl.classList.remove('input-error');
+    return false;
   }
 
   if (emailRegex.test(val)) {
     feedback.className = 'input-feedback valid';
-    feedback.innerText = '✓ Valid email address';
+    feedback.innerText = '✓ Valid email address format';
+    inputEl.classList.remove('input-error');
+    return true;
   } else {
     feedback.className = 'input-feedback invalid';
-    feedback.innerText = '✕ Please enter a valid email (e.g. name@domain.com)';
+    feedback.innerText = '✕ Please enter a valid email (e.g. name@example.com)';
+    inputEl.classList.add('input-error');
+    return false;
   }
 }
 
@@ -525,16 +948,45 @@ function validatePasswordMatchLive() {
   }
 }
 
+// Automatically commit any transaction the user entered before signing in
+async function processPendingTransactionAfterAuth() {
+  if (state.pendingTransaction && state.backendConnected && state.jwtToken) {
+    const pending = state.pendingTransaction;
+    state.pendingTransaction = null;
+    try {
+      const res = await fetch(`${state.apiBase}/expenses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.jwtToken}`
+        },
+        body: JSON.stringify(pending)
+      });
+      if (res.ok) {
+        showToast(`✓ Prepared transaction "${pending.title}" recorded to MongoDB Atlas!`, 'success');
+        await loadTransactions();
+      }
+    } catch (err) {
+      console.warn('Failed to commit pending transaction:', err);
+    }
+  }
+}
+
 // Quick 1-Click Demo Login
 async function quickDemoLogin() {
   showToast('Connecting to Demo Session...', 'info');
-  document.getElementById('loginEmail').value = 'demo@expensetracker.io';
-  document.getElementById('loginPassword').value = 'DemoPassword123!';
+  const emailInput = document.getElementById('loginEmail');
+  const passInput = document.getElementById('loginPassword');
+  if (emailInput) {
+    emailInput.value = 'demo@expensetracker.io';
+    validateEmailField(emailInput, 'loginEmailFeedback');
+  }
+  if (passInput) passInput.value = 'DemoPassword123!';
 
-  const submitBtn = document.getElementById('loginSubmitBtn');
+  const submitBtn = document.getElementById('quickDemoBtn');
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerText = 'Signing In...';
+    submitBtn.innerHTML = '<span class="btn-spinner"></span> Connecting...';
   }
 
   // Attempt backend demo login or auto-register if not existing
@@ -557,6 +1009,11 @@ async function quickDemoLogin() {
     }
 
     if (data && data.success) {
+      state.isDemoMode = false;
+      localStorage.removeItem('expense_tracker_is_demo');
+      localStorage.removeItem('expense_tracker_demo_txs');
+      localStorage.removeItem('has_logged_out');
+
       state.jwtToken = data.token;
       state.currentUser = data.user;
       localStorage.setItem('auth_token', data.token);
@@ -565,28 +1022,37 @@ async function quickDemoLogin() {
       updateAuthUI();
       closeAuthModal();
       showToast('Logged in successfully as Demo User!', 'success');
+
+      const trackerTabBtn = document.querySelector('.nav-tab[data-tab="trackerTab"]');
+      if (trackerTabBtn) trackerTabBtn.click();
+
       await loadTransactions();
+      await loadSubscriptions();
+      await loadBudgets();
+      await processPendingTransactionAfterAuth();
     } else {
       throw new Error(data.message || 'Demo login failed');
     }
   } catch (err) {
     // Sandbox fallback
-    state.currentUser = { name: 'Demo User', email: 'demo@expensetracker.io', _id: 'demo_user_id' };
-    updateAuthUI();
+    launchDemoMode();
     closeAuthModal();
-    showToast('Entered Offline Demo Sandbox Mode!', 'success');
-    await loadTransactions();
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.innerText = 'Sign In';
+      submitBtn.innerText = '🚀 Demo Sign In';
     }
   }
 }
 
 function fillDemoCredentials() {
-  document.getElementById('loginEmail').value = 'demo@expensetracker.io';
-  document.getElementById('loginPassword').value = 'DemoPassword123!';
+  const emailInput = document.getElementById('loginEmail');
+  const passInput = document.getElementById('loginPassword');
+  if (emailInput) {
+    emailInput.value = 'demo@expensetracker.io';
+    validateEmailField(emailInput, 'loginEmailFeedback');
+  }
+  if (passInput) passInput.value = 'DemoPassword123!';
   showToast('Filled Demo Credentials. Click Sign In.', 'info');
 }
 
@@ -648,10 +1114,9 @@ function toggleUserProfileModal() {
   if (!modal) return;
   if (modal.classList.contains('active')) {
     modal.classList.remove('active');
-    modal.style.display = 'none';
+    modal.style.display = '';
   } else {
     modal.classList.add('active');
-    modal.style.display = 'flex';
   }
 }
 
@@ -660,7 +1125,9 @@ function showAuthAlert(msg, type = 'error') {
   const box = document.getElementById('authAlertBox');
   if (!box) return;
   box.className = `auth-alert-box ${type}`;
-  box.innerText = msg;
+  const icon = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+  box.innerHTML = `<span style="font-size:1.15rem;line-height:1;margin-top:1px;">${icon}</span><div style="flex:1;">${msg}</div>`;
+  box.style.display = 'flex';
 }
 
 // Hide alert banner inside auth modal
@@ -668,41 +1135,100 @@ function hideAuthAlert() {
   const box = document.getElementById('authAlertBox');
   if (!box) return;
   box.className = 'auth-alert-box';
-  box.innerText = '';
+  box.innerHTML = '';
+  box.style.display = 'none';
 }
 
 // Handle User Login
 async function handleLogin(event) {
-  event.preventDefault();
+  if (event) event.preventDefault();
+  if (state.isAuthSubmitting) return;
+
   hideAuthAlert();
 
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
+  const emailInput = document.getElementById('loginEmail');
+  const passInput = document.getElementById('loginPassword');
+  const email = (emailInput?.value || '').trim();
+  const password = passInput?.value || '';
   const rememberMe = document.getElementById('rememberMeCheckbox')?.checked;
   const submitBtn = document.getElementById('loginSubmitBtn');
 
-  if (!email || !password) {
-    showAuthAlert('Please enter both your email address and password.', 'error');
+  // Clear previous error borders
+  if (emailInput) emailInput.classList.remove('input-error');
+  if (passInput) passInput.classList.remove('input-error');
+
+  if (!email) {
+    showAuthAlert('Please enter your email address.', 'error');
+    if (emailInput) {
+      emailInput.classList.add('input-error');
+      emailInput.focus();
+    }
+    return;
+  }
+
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    showAuthAlert('Please provide a valid email address format (e.g. user@example.com).', 'error');
+    if (emailInput) {
+      emailInput.classList.add('input-error');
+      emailInput.focus();
+    }
+    return;
+  }
+
+  if (!password) {
+    showAuthAlert('Please enter your account password.', 'error');
+    if (passInput) {
+      passInput.classList.add('input-error');
+      passInput.focus();
+    }
     return;
   }
 
   try {
+    state.isAuthSubmitting = true;
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerText = 'Authenticating...';
+      submitBtn.innerHTML = '<span class="btn-spinner"></span> Authenticating...';
     }
 
     const res = await fetch(`${state.apiBase}/users/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email: email.toLowerCase(), password })
     });
 
-    const data = await res.json();
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = { message: 'Unexpected server response received.' };
+    }
 
     if (!res.ok || !data.success) {
-      throw new Error(data.message || 'Invalid email or password credentials');
+      let errorMsg = 'Invalid email or password credentials.';
+      if (res.status === 401) {
+        errorMsg = 'Invalid email or password. Please verify your credentials and try again.';
+        if (passInput) {
+          passInput.classList.add('input-error');
+          passInput.value = '';
+          passInput.focus();
+        }
+      } else if (res.status === 429) {
+        errorMsg = data.message || 'Too many authentication attempts. Please wait a moment before retrying.';
+      } else if (data.message) {
+        errorMsg = data.message;
+      }
+      showAuthAlert(errorMsg, 'error');
+      showToast(errorMsg, 'error');
+      return;
     }
+
+    // Clear any previous demo state
+    state.isDemoMode = false;
+    localStorage.removeItem('expense_tracker_is_demo');
+    localStorage.removeItem('expense_tracker_demo_txs');
+    localStorage.removeItem('has_logged_out');
 
     // Save token and user details
     state.jwtToken = data.token;
@@ -718,14 +1244,23 @@ async function handleLogin(event) {
 
     updateAuthUI();
     closeAuthModal();
-    showToast(`Welcome back, ${data.user.name}!`, 'success');
+    showToast(`Welcome back, ${data.user.name || 'User'}!`, 'success');
 
-    // Load user's transactions
+    // Navigate to tracker tab
+    const trackerTabBtn = document.querySelector('.nav-tab[data-tab="trackerTab"]');
+    if (trackerTabBtn) trackerTabBtn.click();
+
+    // Load user's transactions from MongoDB
     await loadTransactions();
+    await loadSubscriptions();
+    await loadBudgets();
+    await processPendingTransactionAfterAuth();
   } catch (error) {
-    showAuthAlert(error.message, 'error');
-    showToast(error.message, 'error');
+    const errText = error.message || 'Failed to connect to authentication server.';
+    showAuthAlert(errText, 'error');
+    showToast(errText, 'error');
   } finally {
+    state.isAuthSubmitting = false;
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerText = 'Sign In';
@@ -735,52 +1270,123 @@ async function handleLogin(event) {
 
 // Handle User Registration
 async function handleRegister(event) {
-  event.preventDefault();
+  if (event) event.preventDefault();
+  if (state.isAuthSubmitting) return;
+
   hideAuthAlert();
 
-  const name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
-  const password = document.getElementById('regPassword').value;
-  const confirmPassword = document.getElementById('regConfirmPassword').value;
+  const nameInput = document.getElementById('regName');
+  const emailInput = document.getElementById('regEmail');
+  const passInput = document.getElementById('regPassword');
+  const confirmInput = document.getElementById('regConfirmPassword');
+
+  const name = (nameInput?.value || '').trim();
+  const email = (emailInput?.value || '').trim();
+  const password = passInput?.value || '';
+  const confirmPassword = confirmInput?.value || '';
   const submitBtn = document.getElementById('registerSubmitBtn');
 
-  if (!name || !email || !password || !confirmPassword) {
-    showAuthAlert('Please fill in all required fields.', 'error');
-    return;
-  }
+  // Clear previous error borders
+  [nameInput, emailInput, passInput, confirmInput].forEach(inp => {
+    if (inp) inp.classList.remove('input-error');
+  });
 
-  if (name.length < 2) {
+  if (!name || name.length < 2) {
     showAuthAlert('Full name must be at least 2 characters long.', 'error');
+    if (nameInput) {
+      nameInput.classList.add('input-error');
+      nameInput.focus();
+    }
     return;
   }
 
-  if (password.length < 6) {
+  if (name.length > 50) {
+    showAuthAlert('Full name cannot exceed 50 characters.', 'error');
+    if (nameInput) {
+      nameInput.classList.add('input-error');
+      nameInput.focus();
+    }
+    return;
+  }
+
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!email || !emailRegex.test(email)) {
+    showAuthAlert('Please provide a valid email format (e.g. user@example.com).', 'error');
+    if (emailInput) {
+      emailInput.classList.add('input-error');
+      emailInput.focus();
+    }
+    return;
+  }
+
+  if (!password || password.length < 6) {
     showAuthAlert('Password must be at least 6 characters long.', 'error');
+    if (passInput) {
+      passInput.classList.add('input-error');
+      passInput.focus();
+    }
+    return;
+  }
+
+  if (password.length > 128) {
+    showAuthAlert('Password cannot exceed 128 characters.', 'error');
+    if (passInput) {
+      passInput.classList.add('input-error');
+      passInput.focus();
+    }
     return;
   }
 
   if (password !== confirmPassword) {
-    showAuthAlert('Passwords do not match. Please re-enter your password.', 'error');
+    showAuthAlert('Passwords do not match. Please verify both password entries.', 'error');
+    if (confirmInput) {
+      confirmInput.classList.add('input-error');
+      confirmInput.focus();
+    }
     return;
   }
 
   try {
+    state.isAuthSubmitting = true;
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerText = 'Creating Account...';
+      submitBtn.innerHTML = '<span class="btn-spinner"></span> Creating Account...';
     }
 
     const res = await fetch(`${state.apiBase}/users/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
+      body: JSON.stringify({ name, email: email.toLowerCase(), password })
     });
 
-    const data = await res.json();
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = { message: 'Unexpected server response received.' };
+    }
 
     if (!res.ok || !data.success) {
-      throw new Error(data.message || 'Registration failed. Please try again.');
+      let errorMsg = data.message || 'Registration failed. Please try again.';
+      if (data.message && data.message.toLowerCase().includes('already exists')) {
+        errorMsg = `An account with this email address already exists. <a href="javascript:void(0)" onclick="switchAuthTab('login')">Click here to Sign In</a>`;
+        if (emailInput) emailInput.classList.add('input-error');
+      } else if (Array.isArray(data.errors) && data.errors.length > 0) {
+        errorMsg = `<div><strong>Please resolve the following:</strong><ul>${data.errors.map(e => `<li>${e}</li>`).join('')}</ul></div>`;
+      } else if (res.status === 429) {
+        errorMsg = data.message || 'Too many attempts. Please wait a moment before retrying.';
+      }
+
+      showAuthAlert(errorMsg, 'error');
+      showToast(data.message || 'Registration failed', 'error');
+      return;
     }
+
+    // Clear any previous demo state
+    state.isDemoMode = false;
+    localStorage.removeItem('expense_tracker_is_demo');
+    localStorage.removeItem('expense_tracker_demo_txs');
+    localStorage.removeItem('has_logged_out');
 
     // Save token and user details
     state.jwtToken = data.token;
@@ -790,14 +1396,23 @@ async function handleRegister(event) {
 
     updateAuthUI();
     closeAuthModal();
-    showToast(`Account created successfully! Welcome, ${data.user.name}`, 'success');
+    showToast(`Account created successfully! Welcome, ${data.user.name || 'User'}!`, 'success');
 
-    // Load transactions
+    // Navigate to tracker tab
+    const trackerTabBtn = document.querySelector('.nav-tab[data-tab="trackerTab"]');
+    if (trackerTabBtn) trackerTabBtn.click();
+
+    // Load initial user transactions from database
     await loadTransactions();
+    await loadSubscriptions();
+    await loadBudgets();
+    await processPendingTransactionAfterAuth();
   } catch (error) {
-    showAuthAlert(error.message, 'error');
-    showToast(error.message, 'error');
+    const errText = error.message || 'Failed to connect to authentication server.';
+    showAuthAlert(errText, 'error');
+    showToast(errText, 'error');
   } finally {
+    state.isAuthSubmitting = false;
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerText = 'Register Account';
@@ -811,16 +1426,39 @@ function logoutUser() {
   state.currentUser = null;
   state.isDemoMode = false;
   state.transactions = [];
+  state.subscriptions = [
+    { id: 'sub-1', name: 'Netflix 4K Ultra', amount: 649, category: 'Entertainment', cycle: 'Monthly', dueDay: 15 },
+    { id: 'sub-2', name: 'Spotify Premium Family', amount: 179, category: 'Entertainment', cycle: 'Monthly', dueDay: 28 },
+    { id: 'sub-3', name: 'AWS Cloud Hosting', amount: 2450, category: 'Utilities', cycle: 'Monthly', dueDay: 5 },
+    { id: 'sub-4', name: 'JioFiber High-Speed', amount: 999, category: 'Utilities', cycle: 'Monthly', dueDay: 20 },
+    { id: 'sub-5', name: 'Gym & Fitness Pass', amount: 2000, category: 'Healthcare', cycle: 'Monthly', dueDay: 1 }
+  ];
+  state.budgets = {
+    'Food': 8000,
+    'Housing': 15000,
+    'Travel': 3000,
+    'Utilities': 3500,
+    'Healthcare': 2500,
+    'Entertainment': 3000,
+    'Shopping': 4000,
+    'Education': 5000
+  };
 
+  localStorage.setItem('has_logged_out', 'true');
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_user');
   localStorage.removeItem('expense_tracker_is_demo');
+  localStorage.removeItem('expense_tracker_demo_txs');
+  localStorage.removeItem('expense_tracker_demo_subs');
+  localStorage.removeItem('expense_tracker_demo_budgets');
 
-  // Close profile and auth modals if open
+  // Close modals
+  closeAuthModal();
   const profileModal = document.getElementById('userProfileModal');
-  if (profileModal) profileModal.classList.remove('active');
-  const authModal = document.getElementById('authModal');
-  if (authModal) authModal.classList.remove('active');
+  if (profileModal) {
+    profileModal.classList.remove('active');
+    profileModal.style.display = 'none';
+  }
 
   updateAuthUI();
   updateMetrics();
@@ -828,7 +1466,12 @@ function logoutUser() {
   renderCharts();
   renderAnalyticsView();
   renderBudgetPlanner();
+  renderSubscriptions();
   calculateEmergencyFund();
+
+  // Navigate to tracker tab
+  const trackerTabBtn = document.querySelector('.nav-tab[data-tab="trackerTab"]');
+  if (trackerTabBtn) trackerTabBtn.click();
 
   showToast('You have been signed out successfully.', 'info');
 }
@@ -847,7 +1490,9 @@ async function checkBackendStatus() {
         statusPill.style.background = 'rgba(16, 185, 129, 0.15)';
         statusPill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
         statusPill.style.color = '#34d399';
-        statusText.innerText = `API Online (${data.database})`;
+        const isMongo = data.database && data.database.toLowerCase().includes('mongo');
+        statusText.innerText = isMongo ? 'MongoDB Connected' : 'Local Storage Active';
+        statusPill.title = `Backend Connected: ${data.database || 'Online'}`;
       }
     } else {
       throw new Error('Non-200 status');
@@ -859,6 +1504,7 @@ async function checkBackendStatus() {
       statusPill.style.borderColor = 'rgba(6, 182, 212, 0.4)';
       statusPill.style.color = '#38bdf8';
       statusText.innerText = 'Offline Sandbox';
+      statusPill.title = 'Offline Standalone Mode Active';
     }
   }
 }
@@ -905,12 +1551,14 @@ async function loadTransactions() {
           return;
         }
       } catch (e) {
-        console.warn('Backend fetch failed:', e);
-        state.transactions = [];
+        console.warn('Backend fetch failed, falling back to local records:', e);
+        const stored = localStorage.getItem('expense_tracker_txs');
+        state.transactions = stored ? JSON.parse(stored) : [];
       }
     } else {
-      // Unauthenticated state with connected backend
-      state.transactions = [];
+      // Unauthenticated state: load from local storage
+      const stored = localStorage.getItem('expense_tracker_txs');
+      state.transactions = stored ? JSON.parse(stored) : [];
     }
   } else {
     // Offline local storage fallback
@@ -932,6 +1580,96 @@ async function loadTransactions() {
   renderAnalyticsView();
   renderBudgetPlanner();
   calculateEmergencyFund();
+}
+
+// Load Subscriptions (Backend MongoDB or Local Sandbox)
+async function loadSubscriptions() {
+  if (state.isDemoMode) {
+    const stored = localStorage.getItem('expense_tracker_demo_subs');
+    if (stored) {
+      try {
+        state.subscriptions = JSON.parse(stored);
+      } catch (e) {
+        state.subscriptions = [
+          { id: 'sub-1', name: 'Netflix 4K Ultra', amount: 649, category: 'Entertainment', cycle: 'Monthly', dueDay: 15 },
+          { id: 'sub-2', name: 'Spotify Premium Family', amount: 179, category: 'Entertainment', cycle: 'Monthly', dueDay: 28 },
+          { id: 'sub-3', name: 'AWS Cloud Hosting', amount: 2450, category: 'Utilities', cycle: 'Monthly', dueDay: 5 },
+          { id: 'sub-4', name: 'JioFiber High-Speed', amount: 999, category: 'Utilities', cycle: 'Monthly', dueDay: 20 },
+          { id: 'sub-5', name: 'Gym & Fitness Pass', amount: 2000, category: 'Healthcare', cycle: 'Monthly', dueDay: 1 }
+        ];
+      }
+    }
+    renderSubscriptions();
+    return;
+  }
+
+  if (state.backendConnected && state.jwtToken) {
+    try {
+      const res = await fetch(`${state.apiBase}/subscriptions`, {
+        headers: {
+          'Authorization': `Bearer ${state.jwtToken}`
+        }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data)) {
+          state.subscriptions = json.data;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend fetch subscriptions failed:', e);
+    }
+  } else {
+    const stored = localStorage.getItem('expense_tracker_subscriptions');
+    if (stored) {
+      try {
+        state.subscriptions = JSON.parse(stored);
+      } catch (e) {}
+    }
+  }
+
+  renderSubscriptions();
+}
+
+// Load Budgets (Backend MongoDB or Local Sandbox)
+async function loadBudgets() {
+  if (state.isDemoMode) {
+    const stored = localStorage.getItem('expense_tracker_demo_budgets');
+    if (stored) {
+      try {
+        state.budgets = JSON.parse(stored);
+      } catch (e) {}
+    }
+    renderBudgetPlanner();
+    return;
+  }
+
+  if (state.backendConnected && state.jwtToken) {
+    try {
+      const res = await fetch(`${state.apiBase}/budgets`, {
+        headers: {
+          'Authorization': `Bearer ${state.jwtToken}`
+        }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && typeof json.data === 'object') {
+          state.budgets = { ...state.budgets, ...json.data };
+        }
+      }
+    } catch (e) {
+      console.warn('Backend fetch budgets failed:', e);
+    }
+  } else {
+    const stored = localStorage.getItem('expense_tracker_budgets');
+    if (stored) {
+      try {
+        state.budgets = JSON.parse(stored);
+      } catch (e) {}
+    }
+  }
+
+  renderBudgetPlanner();
 }
 
 // Format Currency with Dynamic Exchange Rates (Week 9 Deliverable)
@@ -1153,12 +1891,25 @@ function renderCharts() {
   renderCategoryBars();
 }
 
-// Category Donut Chart (Canvas)
+// Category Donut Chart (Canvas with High-DPI Support)
 function renderDonutChart() {
   const canvas = document.getElementById('categoryDonutChart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const legend = document.getElementById('categoryLegend');
+
+  const dpr = window.devicePixelRatio || 1;
+  const width = 280;
+  const height = 280;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  if (ctx.setTransform) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  } else {
+    ctx.scale(dpr, dpr);
+  }
 
   const categoryTotals = {};
   let totalExpense = 0;
@@ -1172,21 +1923,21 @@ function renderDonutChart() {
   const categories = Object.keys(categoryTotals);
   legend.innerHTML = '';
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, width, height);
 
   if (totalExpense === 0 || categories.length === 0) {
     ctx.font = '14px Plus Jakarta Sans';
     ctx.fillStyle = '#64748b';
     ctx.textAlign = 'center';
-    ctx.fillText('No Expense Records', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('No Expense Records', width / 2, height / 2);
     legend.innerHTML = '<span class="subtext">Add expenses to view breakdown</span>';
     return;
   }
 
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const radius = 100;
-  const innerRadius = 65;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const radius = 95;
+  const innerRadius = 60;
 
   let startAngle = -0.5 * Math.PI;
 
@@ -1221,7 +1972,7 @@ function renderDonutChart() {
   });
 
   // Center Text in Donut
-  ctx.font = 'bold 16px Plus Jakarta Sans';
+  ctx.font = 'bold 15px Plus Jakarta Sans';
   ctx.fillStyle = '#f8fafc';
   ctx.textAlign = 'center';
   ctx.fillText('Expenses', centerX, centerY - 6);
@@ -1269,22 +2020,46 @@ function renderCategoryBars() {
   }).join('');
 }
 
-// Modal Handlers
-function openTransactionModal() {
-  document.getElementById('modalTitle').innerText = 'Create New Transaction';
-  document.getElementById('transactionForm').reset();
-  document.getElementById('txId').value = '';
-  document.querySelector('input[name="txType"][value="expense"]').checked = true;
+// Modal Handlers (Add Income or Expense Entity)
+function openTransactionModal(defaultType = 'expense') {
+  const isIncome = defaultType === 'income';
+  const modalTitle = document.getElementById('modalTitle');
+  if (modalTitle) {
+    modalTitle.innerText = isIncome ? 'Record New Income (Inflow)' : 'Create New Expense (Outflow)';
+  }
+  const form = document.getElementById('transactionForm');
+  if (form) form.reset();
+  
+  const txIdEl = document.getElementById('txId');
+  if (txIdEl) txIdEl.value = '';
+
+  const targetRadio = document.querySelector(`input[name="txType"][value="${isIncome ? 'income' : 'expense'}"]`);
+  if (targetRadio) targetRadio.checked = true;
+
   updateCategoryOptions();
   setTodayDateInput();
-  document.getElementById('transactionModalOverlay').classList.add('active');
+
+  const modalOverlay = document.getElementById('transactionModalOverlay');
+  if (modalOverlay) {
+    modalOverlay.classList.add('active');
+  }
+
+  setTimeout(() => {
+    const titleInput = document.getElementById('txTitle');
+    if (titleInput) titleInput.focus();
+  }, 60);
 }
 
 function openEditModal(id) {
   const item = state.transactions.find(t => t._id === id);
   if (!item) return;
 
-  document.getElementById('modalTitle').innerText = 'Edit Transaction';
+  const isIncome = item.type === 'income';
+  const modalTitle = document.getElementById('modalTitle');
+  if (modalTitle) {
+    modalTitle.innerText = isIncome ? 'Edit Income Transaction' : 'Edit Expense Transaction';
+  }
+
   document.getElementById('txId').value = item._id;
   document.getElementById('txTitle').value = item.title;
   document.getElementById('txAmount').value = item.amount;
@@ -1297,11 +2072,18 @@ function openEditModal(id) {
   document.getElementById('txDate').value = (item.date || item.createdAt || '').split('T')[0];
   document.getElementById('txDescription').value = item.description || '';
 
-  document.getElementById('transactionModalOverlay').classList.add('active');
+  const modalOverlay = document.getElementById('transactionModalOverlay');
+  if (modalOverlay) {
+    modalOverlay.classList.add('active');
+  }
 }
 
 function closeTransactionModal() {
-  document.getElementById('transactionModalOverlay').classList.remove('active');
+  const modalOverlay = document.getElementById('transactionModalOverlay');
+  if (modalOverlay) {
+    modalOverlay.classList.remove('active');
+    modalOverlay.style.display = '';
+  }
 }
 
 function setTodayDateInput() {
@@ -1379,10 +2161,33 @@ async function handleTransactionSubmit(event) {
     return;
   }
 
-  // If backend is connected but user is not signed in, prompt authentication
-  if (state.backendConnected && !state.jwtToken) {
-    showToast('Please sign in or use Demo Version to record transactions', 'error');
-    openAuthModal('login');
+  // If user is not authenticated: save into active ledger and preserve for cloud sync
+  if (!state.jwtToken) {
+    state.pendingTransaction = payload;
+    if (id) {
+      const idx = state.transactions.findIndex(t => t._id === id);
+      if (idx !== -1) {
+        state.transactions[idx] = { ...state.transactions[idx], ...payload };
+        showToast('✓ Transaction updated in local ledger', 'success');
+      }
+    } else {
+      const newEntry = {
+        _id: 'tx_guest_' + Date.now(),
+        ...payload,
+        createdAt: new Date().toISOString()
+      };
+      state.transactions.unshift(newEntry);
+      showToast(`✓ "${payload.title}" recorded! (Sign in anytime to sync to backend database)`, 'success');
+    }
+
+    localStorage.setItem('expense_tracker_txs', JSON.stringify(state.transactions));
+    updateMetrics();
+    renderLedgerTable();
+    renderCharts();
+    renderAnalyticsView();
+    renderBudgetPlanner();
+    calculateEmergencyFund();
+    closeTransactionModal();
     return;
   }
 
@@ -1471,13 +2276,7 @@ async function deleteTransaction(id) {
     return;
   }
 
-  if (state.backendConnected) {
-    if (!state.jwtToken) {
-      showToast('Please sign in to delete records from the database', 'error');
-      openAuthModal('login');
-      return;
-    }
-
+  if (state.backendConnected && state.jwtToken) {
     try {
       const res = await fetch(`${state.apiBase}/expenses/${id}`, {
         method: 'DELETE',
@@ -1494,9 +2293,7 @@ async function deleteTransaction(id) {
         throw new Error(errData.message || 'Delete failed');
       }
     } catch (e) {
-      console.warn('Backend delete failed:', e);
-      showToast(e.message || 'Failed to delete transaction', 'error');
-      return;
+      console.warn('Backend delete failed, removing locally:', e);
     }
   }
 
@@ -1505,6 +2302,9 @@ async function deleteTransaction(id) {
   updateMetrics();
   renderLedgerTable();
   renderCharts();
+  renderAnalyticsView();
+  renderBudgetPlanner();
+  calculateEmergencyFund();
   showToast('Record deleted from ledger', 'success');
 }
 
@@ -1972,11 +2772,14 @@ function openBudgetConfigModal() {
 // Close Budget Modal
 function closeBudgetConfigModal() {
   const modal = document.getElementById('budgetConfigModal');
-  if (modal) modal.classList.remove('active');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = '';
+  }
 }
 
-// Handle Saving Budget Caps
-function handleSaveBudgetConfig(event) {
+// Handle Saving Budget Caps (MongoDB & Local Storage)
+async function handleSaveBudgetConfig(event) {
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
@@ -1986,6 +2789,41 @@ function handleSaveBudgetConfig(event) {
     if (key.startsWith('budget_')) {
       const cat = key.replace('budget_', '');
       updatedBudgets[cat] = Math.max(0, Number(value) || 0);
+    }
+  }
+
+  if (state.isDemoMode) {
+    state.budgets = updatedBudgets;
+    localStorage.setItem('expense_tracker_demo_budgets', JSON.stringify(state.budgets));
+    renderBudgetPlanner();
+    closeBudgetConfigModal();
+    showToast('Category budget limits saved to Demo Sandbox', 'success');
+    return;
+  }
+
+  if (state.backendConnected && state.jwtToken) {
+    try {
+      const res = await fetch(`${state.apiBase}/budgets`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.jwtToken}`
+        },
+        body: JSON.stringify({ budgets: updatedBudgets })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to save budget settings');
+      }
+      state.budgets = updatedBudgets;
+      localStorage.setItem('expense_tracker_budgets', JSON.stringify(state.budgets));
+      renderBudgetPlanner();
+      closeBudgetConfigModal();
+      showToast('Category budget limits saved to MongoDB Atlas!', 'success');
+      return;
+    } catch (err) {
+      showToast(err.message || 'Failed to persist budgets', 'error');
+      return;
     }
   }
 
@@ -2202,19 +3040,20 @@ function renderSubscriptions() {
   }
 
   container.innerHTML = state.subscriptions.map(sub => {
+    const subId = sub._id || sub.id;
     return `
       <div class="subscription-item">
         <div class="sub-info">
           <span class="sub-name">${escapeHTML(sub.name)}</span>
           <div class="sub-meta">
             <span class="sub-badge">${escapeHTML(sub.category)}</span>
-            <span>• Due day ${sub.dueDay} (${sub.cycle})</span>
+            <span title="Due day ${sub.dueDay} (${escapeHTML(sub.cycle || 'Monthly')})">• Due day ${sub.dueDay}</span>
           </div>
         </div>
         <div class="sub-actions">
           <span class="sub-amount">${formatCurrency(sub.amount)}</span>
-          <button class="btn-log-sub" onclick="logSubscriptionToLedger('${sub.id}')" title="Record this subscription into ledger now">Log</button>
-          <button class="btn-del-sub" onclick="deleteSubscription('${sub.id}')" title="Delete subscription">✕</button>
+          <button class="btn-log-sub" onclick="logSubscriptionToLedger('${subId}')" title="Record this subscription into ledger now">Log</button>
+          <button class="btn-del-sub" onclick="deleteSubscription('${subId}')" title="Delete subscription">✕</button>
         </div>
       </div>
     `;
@@ -2228,12 +3067,15 @@ function openAddSubscriptionModal() {
 
 function closeAddSubscriptionModal() {
   const modal = document.getElementById('subscriptionModal');
-  if (modal) modal.classList.remove('active');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = '';
+  }
   const form = document.getElementById('subscriptionForm');
   if (form) form.reset();
 }
 
-function handleAddSubscription(e) {
+async function handleAddSubscription(e) {
   e.preventDefault();
   const name = document.getElementById('subName').value.trim();
   const amount = parseFloat(document.getElementById('subAmount').value);
@@ -2246,13 +3088,55 @@ function handleAddSubscription(e) {
     return;
   }
 
-  const newSub = {
-    id: `sub_${Date.now()}`,
+  const payload = {
     name,
     amount,
     category,
     cycle,
     dueDay: dueDay || 15
+  };
+
+  if (state.isDemoMode) {
+    const newSub = {
+      id: `sub_${Date.now()}`,
+      ...payload
+    };
+    state.subscriptions.push(newSub);
+    localStorage.setItem('expense_tracker_demo_subs', JSON.stringify(state.subscriptions));
+    renderSubscriptions();
+    closeAddSubscriptionModal();
+    showToast(`Subscription "${name}" added to Demo Sandbox!`, 'success');
+    return;
+  }
+
+  if (state.backendConnected && state.jwtToken) {
+    try {
+      const res = await fetch(`${state.apiBase}/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.jwtToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to save subscription');
+      }
+      state.subscriptions.push(data.data);
+      renderSubscriptions();
+      closeAddSubscriptionModal();
+      showToast(`Subscription "${name}" saved to MongoDB Atlas!`, 'success');
+      return;
+    } catch (err) {
+      showToast(err.message || 'Failed to create subscription', 'error');
+      return;
+    }
+  }
+
+  const newSub = {
+    id: `sub_${Date.now()}`,
+    ...payload
   };
 
   state.subscriptions.push(newSub);
@@ -2262,15 +3146,47 @@ function handleAddSubscription(e) {
   showToast(`Subscription "${name}" added to recurring tracker!`, 'success');
 }
 
-function deleteSubscription(id) {
-  state.subscriptions = state.subscriptions.filter(s => s.id !== id);
+async function deleteSubscription(id) {
+  if (!confirm('Are you sure you want to remove this recurring bill?')) return;
+
+  if (state.isDemoMode) {
+    state.subscriptions = state.subscriptions.filter(s => (s._id || s.id) !== id);
+    localStorage.setItem('expense_tracker_demo_subs', JSON.stringify(state.subscriptions));
+    renderSubscriptions();
+    showToast('Subscription removed from Demo Sandbox', 'info');
+    return;
+  }
+
+  if (state.backendConnected && state.jwtToken) {
+    try {
+      const res = await fetch(`${state.apiBase}/subscriptions/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${state.jwtToken}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to delete subscription');
+      }
+      state.subscriptions = state.subscriptions.filter(s => (s._id || s.id) !== id);
+      renderSubscriptions();
+      showToast('Subscription deleted from database', 'success');
+      return;
+    } catch (err) {
+      showToast(err.message || 'Failed to delete subscription', 'error');
+      return;
+    }
+  }
+
+  state.subscriptions = state.subscriptions.filter(s => (s._id || s.id) !== id);
   localStorage.setItem('expense_tracker_subscriptions', JSON.stringify(state.subscriptions));
   renderSubscriptions();
   showToast('Subscription removed from tracker', 'info');
 }
 
 async function logSubscriptionToLedger(id) {
-  const sub = state.subscriptions.find(s => s.id === id);
+  const sub = state.subscriptions.find(s => (s._id || s.id) === id);
   if (!sub) return;
 
   const payload = {
@@ -2349,5 +3265,45 @@ function escapeHTML(str) {
     "'": '&#39;',
     '"': '&quot;'
   }[tag] || tag));
+}
+
+// Explicit Global Window Bindings (Ensures 100% Reliability for Inline Handlers)
+if (typeof window !== 'undefined') {
+  window.openTransactionModal = openTransactionModal;
+  window.closeTransactionModal = closeTransactionModal;
+  window.openEditModal = openEditModal;
+  window.deleteTransaction = deleteTransaction;
+  window.handleTransactionSubmit = handleTransactionSubmit;
+  window.openAddSubscriptionModal = openAddSubscriptionModal;
+  window.closeAddSubscriptionModal = closeAddSubscriptionModal;
+  window.handleAddSubscription = handleAddSubscription;
+  window.deleteSubscription = deleteSubscription;
+  window.logSubscriptionToLedger = logSubscriptionToLedger;
+  window.openBudgetConfigModal = openBudgetConfigModal;
+  window.closeBudgetConfigModal = closeBudgetConfigModal;
+  window.handleSaveBudgetConfig = handleSaveBudgetConfig;
+  window.exportTransactionsCSV = exportTransactionsCSV;
+  window.printFinancialStatement = printFinancialStatement;
+  window.clearDateFilter = clearDateFilter;
+  window.handleSearchFilter = handleSearchFilter;
+  window.openAuthModal = openAuthModal;
+  window.closeAuthModal = closeAuthModal;
+  window.switchAuthTab = switchAuthTab;
+  window.quickDemoLogin = quickDemoLogin;
+  window.fillDemoCredentials = fillDemoCredentials;
+  window.handleLogin = handleLogin;
+  window.handleRegister = handleRegister;
+  window.logoutUser = logoutUser;
+  window.launchDemoMode = launchDemoMode;
+  window.resetDemoData = resetDemoData;
+  window.toggleUserProfileModal = toggleUserProfileModal;
+  window.copyJwtToClipboard = copyJwtToClipboard;
+  window.changeCurrency = changeCurrency;
+  window.cycleTheme = cycleTheme;
+  window.calculateEMI = calculateEMI;
+  window.calculateSIP = calculateSIP;
+  window.calculateEmergencyFund = calculateEmergencyFund;
+  window.calculateTax = calculateTax;
+  window.navigateToTab = navigateToTab;
 }
 
